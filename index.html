@@ -9,7 +9,7 @@ import {
 /**
  * APEX UTILITY SUITE
  * Precision-engineered client-side tools.
- * * CORE LIBRARIES LOADED:
+ * * CORE LIBRARIES LOADED via CDN for portability:
  * - Prettier (Formatting)
  * - CryptoJS (Hashing)
  * - PapaParse (CSV Parsing)
@@ -50,7 +50,7 @@ const copyToClipboard = (text) => {
     textArea.value = text;
     document.body.appendChild(textArea);
     textArea.select();
-    document.execCommand("Copy");
+    document.execCommand("copy"); // lowercase 'copy' is standard
     textArea.remove();
     return true;
   } catch (err) {
@@ -64,7 +64,7 @@ const DataEngine = {
   csvToHtml: (csv) => {
     if (!window.Papa) throw new Error("Engine Loading...");
     const parsed = window.Papa.parse(csv, { header: true });
-    if (parsed.errors.length) throw new Error(parsed.errors[0].message);
+    if (parsed.errors.length && parsed.errors[0].message) throw new Error(parsed.errors[0].message);
     const headers = parsed.meta.fields || [];
     let html = '<table class="table">\n  <thead>\n    <tr>';
     headers.forEach(h => html += `<th>${h}</th>`);
