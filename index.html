@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apex Utility Suite</title>
     
-    <!-- 1. Tailwind CSS -->
+    <!-- 1. Tailwind CSS (Load first for styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -21,24 +21,22 @@
         }
     </script>
     
-    <!-- 2. React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 2. React & ReactDOM (Development builds for UMD compatibility - Points 1 & 4) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- 3. Babel (for JSX compilation in browser) -->
+    <!-- 3. Babel (For JSX compilation - Point 2) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 4. Lucide React Icons -->
-    <script src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.min.js"></script>
+    <!-- 4. Lucide React Icons (Stable UMD Version 0.263.1 - Point 4) -->
+    <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.min.js"></script>
 
     <style>
-        /* Custom scrollbar styling */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(107, 114, 128, 0.8); }
         
-        /* Animation utilities */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeIn 0.3s ease-out forwards; }
     </style>
@@ -47,25 +45,65 @@
 
     <div id="root" class="h-full w-full"></div>
 
+    <!-- Your Custom Script (Must be last - Point 2) -->
     <script type="text/babel">
-        // --- GLOBALS & IMPORTS REPLACEMENT ---
-        // Instead of 'import', we destructure from the global libraries loaded in <head>
+        // --- GLOBALS & SAFE IMPORTS ---
         const { useState, useEffect, useRef } = React;
         
-        // Destructure Icons from the global 'lucideReact' object
-        const { 
-          Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
-          Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
-          Search, Hash, Image, Database, Globe, Cpu, Wrench, 
-          Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet
-        } = lucideReact;
+        // POINT 5 & 6: Safe Global Namespace & Crash Prevention
+        // We create a proxy to handle missing icons gracefully.
+        const LucideGlobal = window.lucideReact || {};
+        
+        const SafeIcon = (props) => (
+            <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        );
 
-        // Alias Image to ImageIcon to match your original code
-        const ImageIcon = Image;
+        // Helper to get icon or fallback
+        const getIcon = (name) => {
+            if (LucideGlobal[name]) return LucideGlobal[name];
+            console.warn(`Icon "${name}" not found in lucide-react. Using fallback.`);
+            return SafeIcon;
+        };
+
+        // Destructure icons using the safe helper
+        // This ensures the app NEVER crashes even if an icon is missing (Point 6)
+        const Code = getIcon('Code');
+        const FileJson = getIcon('FileJson');
+        const FileType = getIcon('FileType');
+        const CheckCircle = getIcon('CheckCircle');
+        const AlertCircle = getIcon('AlertCircle');
+        const Copy = getIcon('Copy');
+        const Trash2 = getIcon('Trash2');
+        const Maximize2 = getIcon('Maximize2');
+        const Moon = getIcon('Moon');
+        const Sun = getIcon('Sun');
+        const Menu = getIcon('Menu');
+        const ArrowRightLeft = getIcon('ArrowRightLeft');
+        const Play = getIcon('Play');
+        const ShieldCheck = getIcon('ShieldCheck');
+        const Search = getIcon('Search');
+        const Hash = getIcon('Hash');
+        const ImageIcon = getIcon('Image'); // Alias Image
+        const Database = getIcon('Database');
+        const Globe = getIcon('Globe');
+        const Cpu = getIcon('Cpu');
+        const Wrench = getIcon('Wrench');
+        const Lock = getIcon('Lock');
+        const Type = getIcon('Type');
+        const List = getIcon('List');
+        const Monitor = getIcon('Monitor');
+        const Split = getIcon('Split');
+        const Zap = getIcon('Zap');
+        const Upload = getIcon('Upload');
+        const FileSpreadsheet = getIcon('FileSpreadsheet');
+
 
         /**
          * APEX UTILITY SUITE
-         * Precision-engineered client-side tools.
          */
 
         // --- HOOKS & UTILS ---
