@@ -1,781 +1,741 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apex Utility Suite</title>
-    
-    <!-- 1. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: { 
-            extend: {
-                fontFamily: { 
-                    sans: ['Inter', 'sans-serif'],
-                    silkscreen: ['Silkscreen', 'cursive']
-                }
-            } 
-        }
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
+  Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
+  Search, Hash, Image as ImageIcon, Database, Globe, Cpu, Wrench, 
+  Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet
+} from 'lucide-react';
+
+/**
+ * APEX UTILITY SUITE
+ * Precision-engineered client-side tools.
+ * * CORE LIBRARIES LOADED via CDN for portability:
+ * - Prettier (Formatting)
+ * - CryptoJS (Hashing)
+ * - PapaParse (CSV Parsing)
+ * - Diff (Text Comparison)
+ * - SheetJS (Excel Parsing)
+ */
+
+// --- HOOKS & UTILS ---
+
+const useExternalScripts = (urls) => {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let loadCount = 0;
+    const loadScript = (url) => {
+      if (document.querySelector(`script[src="${url}"]`)) {
+        loadCount++;
+        if (loadCount === urls.length) setLoaded(true);
+        return;
       }
-    </script>
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.onload = () => {
+        loadCount++;
+        if (loadCount === urls.length) setLoaded(true);
+      };
+      document.body.appendChild(script);
+    };
+    urls.forEach(loadScript);
+  }, [urls]);
+  return loaded;
+};
 
-    <!-- 2. React & ReactDOM (Loaded First for Stability) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+const copyToClipboard = (text) => {
+  if (!text) return false;
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy"); // lowercase 'copy' is standard
+    textArea.remove();
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+// --- LOGIC ENGINES ---
+
+const DataEngine = {
+  csvToHtml: (csv) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    const parsed = window.Papa.parse(csv, { header: true });
+    if (parsed.errors.length && parsed.errors[0].message) throw new Error(parsed.errors[0].message);
+    const headers = parsed.meta.fields || [];
+    let html = '<table class="table">\n  <thead>\n    <tr>';
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr>\n  </thead>\n  <tbody>\n';
+    parsed.data.forEach(row => {
+      html += '    <tr>';
+      headers.forEach(h => html += `<td>${row[h] || ''}</td>`);
+      html += '</tr>\n';
+    });
+    return html + '  </tbody>\n</table>';
+  },
+  csvToJson: (csv) => {
+     if (!window.Papa) throw new Error("Engine Loading...");
+     const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
+     return JSON.stringify(result.data, null, 2);
+  },
+  csvToTsv: (csv) => {
+     if (!window.Papa) throw new Error("Engine Loading...");
+     const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
+     return window.Papa.unparse(result.data, { delimiter: "\t" });
+  },
+  jsonToCsv: (json) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    return window.Papa.unparse(JSON.parse(json));
+  },
+  jsonToTsv: (json) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    return window.Papa.unparse(JSON.parse(json), { delimiter: "\t" });
+  },
+  jsonToHtml: (jsonStr) => {
+    const json = JSON.parse(jsonStr);
+    const arr = Array.isArray(json) ? json : [json];
+    if (arr.length === 0) return "Empty Array";
+    const headers = Object.keys(arr[0]);
+    let html = '<table><thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+    arr.forEach(row => {
+      html += '<tr>' + headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
+    });
+    return html + '</tbody></table>';
+  },
+  xmlToJson: (xmlStr) => {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlStr, "text/xml");
+    if (xml.querySelector("parsererror")) throw new Error("Invalid XML Structure");
     
-    <!-- 3. Babel (For JSX) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- 4. Lucide Icons (UMD Build) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
-
-    <!-- 5. Logic Libraries -->
-    <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
-    <script src="https://unpkg.com/prettier@2.8.8/parser-html.js"></script>
-    <script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script>
-    <script src="https://unpkg.com/prettier@2.8.8/parser-postcss.js"></script>
-    <script src="https://unpkg.com/prettier@2.8.8/parser-sql.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap');
-        
-        body { font-family: 'Inter', sans-serif; }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #374151; }
-    </style>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        // --- SAFE GLOBAL VARIABLES ---
-        const { useState, useEffect, useRef } = React;
-        const { createRoot } = ReactDOM;
-        
-        // Destructure Icons safely from the UMD global
-        // Note: We rename 'Image' to 'ImageIcon' to avoid conflict with browser 'Image' constructor
-        const { 
-            Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
-            Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
-            Search, Hash, Image: ImageIcon, Database, Globe, Cpu, Wrench, 
-            Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet,
-            ChevronDown, ChevronRight, Palette, QrCode, Clock, Key, Sparkles,
-            Download, Info
-        } = window.lucideReact || window.lucide; // Fallback for stability
-
-        // --- HOOKS ---
-        const useExternalScripts = (urls) => { const [l, s] = useState(true); return l; };
-        const copyToClipboard = (text) => {
-            if (!text) return false;
-            try {
-                const ta = document.createElement("textarea");
-                ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); return true;
-            } catch (err) { return false; }
-        };
-
-        // --- ENGINES ---
-        const TextEngine = {
-            caseConvert: (t, type) => {
-                if(!t) return "";
-                switch(type) {
-                    case 'upper': return t.toUpperCase();
-                    case 'lower': return t.toLowerCase();
-                    case 'camel': return t.replace(/(?:^\w|[A-Z]|\b\w)/g, (w, i) => i === 0 ? w.toLowerCase() : w.toUpperCase()).replace(/\s+/g, '');
-                    case 'snake': return t.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)?.map(x=>x.toLowerCase()).join('_') || t;
-                    case 'kebab': return t.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)?.map(x=>x.toLowerCase()).join('-') || t;
-                    default: return t;
-                }
-            },
-            slugify: (text) => text.toString().toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-').replace(/^-+/, '').replace(/-+$/, ''),
-            lorem: (count) => {
-                const words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"];
-                let res = [];
-                for(let i=0; i<count; i++) res.push(words[Math.floor(Math.random() * words.length)]);
-                return res.join(" ");
-            },
-            cleanJson: (t) => {
-                let f = t.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":').replace(/'/g, '"'); 
-                try { return JSON.stringify(JSON.parse(f), null, 2); } catch(e) { throw new Error("Fix failed: " + e.message); }
-            }
-        };
-
-        const VibeEngine = {
-            cleanContext: (code) => {
-                return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '').replace(/console\.log\(.*?\);?/g, '').replace(/^\s*[\r\n]/gm, '').trim();
-            },
-            reactBoilerplate: (name) => {
-                const comp = name.charAt(0).toUpperCase() + name.slice(1).replace(/[^a-zA-Z0-9]/g,'');
-                return `import React, { useState, useEffect } from 'react';\n\nconst ${comp} = () => {\n  return (\n    <div className="">\n      <h1>${comp} Component</h1>\n    </div>\n  );\n};\n\nexport default ${comp};`;
-            },
-            tokenEstimate: (text) => {
-                const chars = text.length; const words = text.trim().split(/\s+/).length; const estTokens = Math.ceil(chars / 4);
-                return `Characters: ${chars}\nWords: ${words}\nEst. Tokens: ~${estTokens}\n(Roughly 4 chars per token)`;
-            },
-            generateTree: (text) => {
-                const paths = text.split('\n').filter(p => p.trim());
-                let result = ". (root)\n";
-                paths.forEach(p => {
-                    const parts = p.split('/');
-                    let indent = "";
-                    parts.forEach((part, i) => {
-                        if (i === parts.length - 1) result += `${indent}├── ${part}\n`;
-                        else indent += "│   ";
-                    });
-                });
-                return result;
-            }
-        };
-
-        const SecurityEngine = {
-            uuid: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }),
-            password: (len = 16) => { const c = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"; let r = ""; for(let i=0; i<len; ++i) r += c.charAt(Math.floor(Math.random() * c.length)); return r; }
-        };
-
-        const DataEngine = {
-          csvToHtml: (csv) => {
-            if (!window.Papa) throw new Error("Loading...");
-            const p = window.Papa.parse(csv, { header: true });
-            if (p.errors.length) throw new Error(p.errors[0].message);
-            return `<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700">\n<thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase">\n<tr>${p.meta.fields.map(h=>`<th class="px-4 py-2 border-b dark:border-gray-700">${h}</th>`).join('')}</tr>\n</thead>\n<tbody>${p.data.map(r=>`<tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700">${p.meta.fields.map(h=>`<td class="px-4 py-2">${r[h]||''}</td>`).join('')}</tr>`).join('\n')}</tbody></table>`;
-          },
-          csvToJson: (csv) => JSON.stringify(window.Papa.parse(csv, { header: true, skipEmptyLines: true }).data, null, 2),
-          csvToTsv: (csv) => window.Papa.unparse(window.Papa.parse(csv, { header: true, skipEmptyLines: true }).data, { delimiter: "\t" }),
-          jsonToCsv: (json) => window.Papa.unparse(JSON.parse(json)),
-          jsonToTsv: (json) => window.Papa.unparse(JSON.parse(json), { delimiter: "\t" }),
-          jsonToHtml: (jsonStr) => {
-            const arr = JSON.parse(jsonStr); 
-            const d = Array.isArray(arr) ? arr : [arr];
-            const h = Object.keys(d[0]||{});
-            return `<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700"><thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase"><tr>${h.map(k=>`<th class="px-4 py-2 border-b dark:border-gray-700">${k}</th>`).join('')}</tr></thead><tbody>${d.map(r=>`<tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700">${h.map(k=>`<td class="px-4 py-2">${r[k]!==undefined?r[k]:''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-          },
-          xmlToJson: (xmlStr) => {
-            const xml = new DOMParser().parseFromString(xmlStr, "text/xml");
-            if (xml.querySelector("parsererror")) throw new Error("Invalid XML");
-            const xmlToObj = (n) => {
-               if (n.nodeType === 3) return n.nodeValue.trim() || "";
-               let o = {};
-               if (n.hasChildNodes()) {
-                  for(let i=0; i<n.childNodes.length; i++) {
-                     const c = n.childNodes.item(i);
-                     if (c.nodeType === 3 && !c.nodeValue.trim()) continue;
-                     const nm = c.nodeName; const v = xmlToObj(c);
-                     o[nm] = o[nm] ? [].concat(o[nm], v) : v;
-                  }
-               }
-               return (Object.keys(o).length === 1 && o["#text"]) ? o["#text"] : (Object.keys(o).length === 0 ? "" : o);
-            };
-            return JSON.stringify(xmlToObj(xml.documentElement), null, 2);
-          },
-          jsonToXml: (jsonStr) => {
-             const toXml = (v) => Object.entries(v).map(([k, val]) => `<${k.replace(/[^a-zA-Z0-9\-_]/g,'_')}>${typeof val==='object'&&val!==null?toXml(val):val}</${k.replace(/[^a-zA-Z0-9\-_]/g,'_')}>`).join('');
-             return `<?xml version="1.0" encoding="UTF-8"?>\n<root>${toXml(JSON.parse(jsonStr))}</root>`;
+    // Recursive XML to JSON
+    const xmlToObj = (node) => {
+       if (node.nodeType === 3) return node.nodeValue.trim() || ""; // Text
+       let obj = {};
+       if (node.hasChildNodes()) {
+          for(let i = 0; i < node.childNodes.length; i++) {
+             const child = node.childNodes.item(i);
+             if (child.nodeType === 3 && !child.nodeValue.trim()) continue; // Skip empty whitespace
+             const name = child.nodeName;
+             const val = xmlToObj(child);
+             if (obj[name]) {
+                if (!Array.isArray(obj[name])) obj[name] = [obj[name]];
+                obj[name].push(val);
+             } else {
+                obj[name] = val;
+             }
           }
-        };
+       }
+       // If object is basically empty but has a text value, return strict text
+       if (Object.keys(obj).length === 1 && obj["#text"]) return obj["#text"];
+       if (Object.keys(obj).length === 0) return "";
+       return obj;
+    };
+    return JSON.stringify(xmlToObj(xml.documentElement), null, 2);
+  },
+  jsonToXml: (jsonStr) => {
+     const obj = JSON.parse(jsonStr);
+     const toXml = (v) => Object.entries(v).map(([k, val]) => {
+        const tag = k.replace(/[^a-zA-Z0-9\-_]/g, '_'); // Sanitize tags
+        return `<${tag}>${typeof val === 'object' && val !== null ? toXml(val) : val}</${tag}>`;
+     }).join('');
+     return `<?xml version="1.0" encoding="UTF-8"?>\n<root>${toXml(obj)}</root>`;
+  }
+};
 
-        const CryptoEngine = { hash: (t, a) => window.CryptoJS[a](t).toString() };
+const CryptoEngine = {
+  hash: (text, algo) => {
+    if (!window.CryptoJS) throw new Error("Crypto Engine Loading...");
+    return window.CryptoJS[algo](text).toString();
+  }
+};
 
-        const NumberEngine = {
-          convert: (v, f, t) => { const i = parseInt(v, f); if (isNaN(i)) throw new Error(`Invalid base-${f}`); return i.toString(t).toUpperCase(); },
-          dataSize: (b) => { const i = Math.floor(Math.log(b)/Math.log(1024)); return (b/Math.pow(1024, i)).toFixed(2) + ' ' + ['Bytes','KB','MB','GB','TB'][i]; }
-        };
+const NumberEngine = {
+  convert: (val, from, to) => {
+    const i = parseInt(val, from);
+    if (isNaN(i)) throw new Error(`Invalid base-${from} number`);
+    return i.toString(to).toUpperCase();
+  },
+  unit: (val, type) => {
+    const n = parseFloat(val);
+    if (isNaN(n)) throw new Error("Invalid Number");
+    if (type === 'c-f') return (n * 9/5) + 32;
+    if (type === 'f-c') return (n - 32) * 5/9;
+    if (type === 'kg-lb') return n * 2.20462;
+    if (type === 'lb-kg') return n / 2.20462;
+    if (type === 'm-ft') return n * 3.28084;
+    return n;
+  },
+  dataSize: (bytes) => {
+    const b = parseInt(bytes);
+    if (isNaN(b)) return "Invalid";
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    if (b === 0) return '0 Byte';
+    const i = parseInt(Math.floor(Math.log(b) / Math.log(1024)));
+    return Math.round(b / Math.pow(1024, i), 2) + ' ' + sizes[i];
+  }
+};
 
-        const StringEngine = {
-          stripTags: (h) => { const t = document.createElement("div"); t.innerHTML = h; return t.textContent || ""; }
-        };
+const StringEngine = {
+  stripTags: (html) => {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  },
+  escapeHtml: (text) => {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  },
+  textToHex: (str) => {
+    let hex = '';
+    for(let i=0;i<str.length;i++) hex += ''+str.charCodeAt(i).toString(16);
+    return hex;
+  },
+  hexToText: (hex) => {
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    return str;
+  }
+};
 
-        const ColorEngine = {
-            contrast: (hex1, hex2) => {
-                const getLum = (hex) => {
-                    const rgb = parseInt(hex.substring(1), 16);
-                    const r = (rgb >> 16) & 0xff; const g = (rgb >>  8) & 0xff; const b = (rgb >>  0) & 0xff;
-                    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                }
-                const l1 = getLum(hex1 || '#000000'); const l2 = getLum(hex2 || '#ffffff');
-                const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-                return ratio.toFixed(2);
-            }
-        };
+// --- COMPONENT RENDERERS ---
 
-        // --- COMPONENTS ---
-        const Editor = ({ value, onChange, readOnly, placeholder }) => (
-            <textarea className={`w-full h-full p-4 font-mono text-sm resize-none bg-white dark:bg-gray-800 border rounded-lg ${readOnly?'text-gray-500':'border-gray-300 dark:border-gray-600 focus:border-indigo-500'}`} value={value} onChange={e=>onChange && onChange(e.target.value)} readOnly={readOnly} placeholder={placeholder} spellCheck="false" />
-        );
+const Editor = ({ value, onChange, readOnly, placeholder }) => (
+  <textarea
+    className={`w-full h-full p-4 font-mono text-sm resize-none focus:outline-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border rounded-lg ${
+      readOnly ? 'bg-gray-50 dark:bg-gray-900 text-gray-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500'
+    }`}
+    value={value}
+    onChange={(e) => onChange && onChange(e.target.value)}
+    readOnly={readOnly}
+    placeholder={placeholder}
+    spellCheck="false"
+  />
+);
 
-        const PromptBuilder = ({ onGenerate }) => {
-            const [role, setRole] = useState("Expert Developer");
-            const [task, setTask] = useState("");
-            const [context, setContext] = useState("");
-            
-            const build = () => {
-                const prompt = `**ROLE:**\n${role}\n\n**CONTEXT:**\n${context}\n\n**TASK:**\n${task}`;
-                onGenerate(prompt);
-            };
+const DiffViewer = ({ oldText, newText }) => {
+  const [diffHtml, setDiffHtml] = useState('');
+  
+  useEffect(() => {
+    if (!window.Diff) {
+      setDiffHtml('Loading Diff Engine...');
+      return;
+    }
+    const diff = window.Diff.diffLines(oldText, newText);
+    const html = diff.map(part => {
+      const color = part.added ? 'bg-green-100 dark:bg-green-900/30' : part.removed ? 'bg-red-100 dark:bg-red-900/30' : '';
+      return `<div class="${color} px-2 whitespace-pre-wrap font-mono text-sm">${part.value}</div>`;
+    }).join('');
+    setDiffHtml(html);
+  }, [oldText, newText]);
 
-            return (
-                <div className="flex flex-col gap-4 h-full">
-                    <input className="p-3 border rounded dark:bg-gray-800" placeholder="Role (e.g. Senior React Dev)" value={role} onChange={e=>setRole(e.target.value)} />
-                    <textarea className="p-3 border rounded dark:bg-gray-800 h-24" placeholder="Context (e.g. Using React 18, Tailwind, No external libs)" value={context} onChange={e=>setContext(e.target.value)} />
-                    <textarea className="p-3 border rounded dark:bg-gray-800 flex-1" placeholder="Task (e.g. Create a login component)" value={task} onChange={e=>setTask(e.target.value)} />
-                    <button onClick={build} className="p-3 bg-indigo-600 text-white rounded font-bold">Generate Prompt</button>
-                </div>
-            );
-        };
+  return <div className="h-full overflow-auto border rounded-lg p-2 bg-white dark:bg-gray-800" dangerouslySetInnerHTML={{__html: diffHtml}} />;
+};
 
-        const MarkdownViewer = ({ markdown }) => {
-            const [h, sH] = useState('');
-            useEffect(() => { if(window.marked) sH(window.marked.parse(markdown)); }, [markdown]);
-            return <div className="h-full overflow-auto border rounded-lg p-4 bg-white dark:bg-gray-800 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{__html: h}} />;
-        };
+const ColorExplorer = ({ color, setColor }) => (
+  <div className="flex flex-col gap-6 items-center justify-center h-full">
+    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-32 h-32 cursor-pointer border-4 border-gray-200 rounded-xl" />
+    <div className="grid grid-cols-2 gap-4 text-center">
+      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="text-xs text-gray-500 font-bold uppercase">HEX</div>
+        <div className="text-xl font-mono dark:text-white select-all">{color.toUpperCase()}</div>
+      </div>
+      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="text-xs text-gray-500 font-bold uppercase">RGB</div>
+        <div className="text-xl font-mono dark:text-white select-all">
+          {parseInt(color.slice(1, 3), 16)}, {parseInt(color.slice(3, 5), 16)}, {parseInt(color.slice(5, 7), 16)}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
-        const QRGenerator = ({ text }) => {
-            const r = useRef(null);
-            useEffect(() => { if(window.QRious && r.current && text) new window.QRious({ element: r.current, value: text, size: 200 }); }, [text]);
-            return <div className="flex flex-col items-center justify-center h-full gap-4"><canvas ref={r} className="border-4 border-white shadow-lg rounded-lg"></canvas>{!text && <p className="text-gray-400">Enter text</p>}</div>;
-        };
+// --- MAIN APP ---
 
-        const ImageResizer = () => {
-            const [imgSrc, setImgSrc] = useState(null);
-            const [result, setResult] = useState(null);
-            const [scale, setScale] = useState(50);
-            const [originalSize, setOriginalSize] = useState({ w: 0, h: 0 });
+export default function App() {
+  const [activeToolId, setActiveToolId] = useState('json-fmt');
+  const [input, setInput] = useState('');
+  const [input2, setInput2] = useState(''); 
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState('');
+  const [notification, setNotification] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [color, setColor] = useState('#4f46e5');
+  const fileInputRef = useRef(null);
 
-            useEffect(() => {
-                if (imgSrc) processImage();
-            }, [scale, imgSrc]);
+  // Load All Engines including SheetJS for Excel
+  const scriptsLoaded = useExternalScripts([
+    "https://unpkg.com/prettier@2.8.8/standalone.js",
+    "https://unpkg.com/prettier@2.8.8/parser-html.js",
+    "https://unpkg.com/prettier@2.8.8/parser-babel.js",
+    "https://unpkg.com/prettier@2.8.8/parser-postcss.js",
+    "https://unpkg.com/prettier@2.8.8/parser-sql.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
+  ]);
 
-            const handleFile = (e) => {
-                const f = e.target.files[0];
-                if (f) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const img = new Image(); // Browser Native Image
-                        img.onload = () => {
-                            setOriginalSize({ w: img.width, h: img.height });
-                            setImgSrc(img);
-                        };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(f);
-                }
-            };
+  useEffect(() => {
+    if (isDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [isDark]);
 
-            const processImage = () => {
-                if (!imgSrc) return;
-                const canvas = document.createElement('canvas');
-                const w = Math.floor(originalSize.w * (scale / 100));
-                const h = Math.floor(originalSize.h * (scale / 100));
-                canvas.width = w;
-                canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(imgSrc, 0, 0, w, h);
-                setResult(canvas.toDataURL('image/png'));
-            };
+  const notify = (msg, type = 'success') => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
-            return (
-                <div className="h-full flex flex-col gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
-                    {!imgSrc ? (
-                        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-10 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative">
-                            <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer" />
-                            <Upload className="w-12 h-12 text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-500 font-medium">Click or Drop Image to Resize</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col h-full gap-4">
-                            <div className="flex items-center gap-4 bg-gray-100 dark:bg-gray-900 p-3 rounded-lg">
-                                <span className="text-sm font-bold min-w-[60px]">{scale}%</span>
-                                <input type="range" min="1" max="100" value={scale} onChange={e => setScale(e.target.value)} className="flex-1 cursor-pointer" />
-                                <button onClick={() => { setImgSrc(null); setResult(null); }} className="text-red-500 text-xs font-bold hover:underline">Reset</button>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg border overflow-hidden p-4">
-                                {result && <img src={result} alt="Resized" className="max-w-full max-h-full object-contain shadow-sm" />}
-                            </div>
-                            <div className="flex justify-between items-center text-xs text-gray-500">
-                                <span>Original: {originalSize.w}x{originalSize.h}</span>
-                                <span>New: {Math.floor(originalSize.w * (scale/100))}x{Math.floor(originalSize.h * (scale/100))}</span>
-                                {result && <a href={result} download={`resized-${scale}p.png`} className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors"><Download size={14}/> Download</a>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-        const FaviconGen = () => {
-            const [imgSrc, setImgSrc] = useState(null);
-            const [result, setResult] = useState(null);
+    // Excel Logic
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      if (!window.XLSX) {
+        notify("Excel Engine Loading...", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = evt.target.result;
+          const workbook = window.XLSX.read(data, { type: 'binary' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          
+          // Intelligent format selection based on current tool
+          if (activeToolId.includes('json')) {
+             const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
+             setInput(JSON.stringify(jsonData, null, 2));
+             notify("Excel parsed to JSON");
+          } else {
+             // Default to CSV
+             const csvData = window.XLSX.utils.sheet_to_csv(firstSheet);
+             setInput(csvData);
+             notify("Excel parsed to CSV");
+          }
+        } catch (err) {
+          setError("Failed to parse Excel file");
+        }
+      };
+      reader.readAsBinaryString(file);
+      return;
+    }
 
-            const handleFile = (e) => {
-                const f = e.target.files[0];
-                if (f) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = 32;
-                            canvas.height = 32;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, 32, 32);
-                            setImgSrc(ev.target.result);
-                            setResult(canvas.toDataURL('image/png'));
-                        };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(f);
-                }
-            };
+    // Default Text Logic (CSV, JSON, TXT, XML, Code)
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setInput(evt.target.result);
+      notify("File Loaded");
+    };
+    reader.readAsText(file);
+  };
 
-            return (
-                <div className="h-full flex flex-col gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-3 rounded-lg text-xs flex gap-2 items-start">
-                        <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                        <span>For optimal results and to prevent distortion, please ensure your source image has a <strong>1:1 aspect ratio</strong> (square) before uploading.</span>
-                    </div>
-                    {!imgSrc ? (
-                        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-10 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative">
-                            <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer" />
-                            <ImageIcon className="w-12 h-12 text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-500 font-medium">Upload Logo</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center flex-1 gap-6">
-                            <div className="flex gap-8 items-center">
-                                <div className="text-center">
-                                    <p className="text-xs mb-2 text-gray-500">Original</p>
-                                    <img src={imgSrc} className="w-24 h-24 object-contain border rounded bg-white" />
-                                </div>
-                                <ArrowRightLeft className="text-gray-300" />
-                                <div className="text-center">
-                                    <p className="text-xs mb-2 text-gray-500">32x32 Favicon</p>
-                                    <img src={result} className="w-8 h-8 border rounded bg-white shadow-sm" />
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => { setImgSrc(null); setResult(null); }} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Reset</button>
-                                {result && <a href={result} download="favicon.png" className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded shadow hover:bg-indigo-700"><Download size={16}/> Download .PNG</a>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
+  // --- TOOL REGISTRY ---
 
-        const Metronome = () => {
-            const [bpm, setBpm] = useState(100);
-            const [playing, setPlaying] = useState(false);
-            const timer = useRef(null);
-            const playClick = () => { const a = new AudioContext(); const o = a.createOscillator(); const g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=1000; g.gain.exponentialRampToValueAtTime(0.00001, a.currentTime + 0.1); o.start(0); o.stop(0.1); };
-            useEffect(() => {
-                if (playing) { timer.current = setInterval(playClick, (60 / bpm) * 1000); } else { clearInterval(timer.current); }
-                return () => clearInterval(timer.current);
-            }, [playing, bpm]);
-            return (
-                <div className="flex flex-col items-center justify-center h-full gap-6">
-                    <div className="text-6xl font-bold text-indigo-600">{bpm} <span className="text-lg text-gray-400">BPM</span></div>
-                    <input type="range" min="40" max="200" value={bpm} onChange={e=>setBpm(Number(e.target.value))} className="w-64" />
-                    <button onClick={()=>setPlaying(!playing)} className={`px-8 py-3 rounded-full text-white font-bold ${playing?'bg-red-500':'bg-green-500'}`}>{playing?'STOP':'START'}</button>
-                </div>
-            );
-        };
+  const tools = {
+    // 1. DATA
+    'csv-html': { cat: 'data', name: 'CSV to HTML', run: (i) => DataEngine.csvToHtml(i) },
+    'csv-json': { cat: 'data', name: 'CSV to JSON', run: (i) => DataEngine.csvToJson(i) },
+    'csv-tsv':  { cat: 'data', name: 'CSV to TSV', run: (i) => DataEngine.csvToTsv(i) },
+    'csv-xml':  { cat: 'data', name: 'CSV to XML', run: (i) => DataEngine.jsonToXml(DataEngine.csvToJson(i)) },
+    'json-csv': { cat: 'data', name: 'JSON to CSV', run: (i) => DataEngine.jsonToCsv(i) },
+    'json-tsv': { cat: 'data', name: 'JSON to TSV', run: (i) => DataEngine.jsonToTsv(i) },
+    'json-xml': { cat: 'data', name: 'JSON to XML', run: (i) => DataEngine.jsonToXml(i) },
+    'json-html':{ cat: 'data', name: 'JSON to HTML', run: (i) => DataEngine.jsonToHtml(i) },
+    'xml-json': { cat: 'data', name: 'XML to JSON', run: (i) => DataEngine.xmlToJson(i) },
+    'xml-csv':  { cat: 'data', name: 'XML to CSV', run: (i) => DataEngine.jsonToCsv(DataEngine.xmlToJson(i)) },
+    'xml-tsv':  { cat: 'data', name: 'XML to TSV', run: (i) => DataEngine.jsonToTsv(DataEngine.xmlToJson(i)) },
+    'xml-html': { cat: 'data', name: 'XML to HTML', run: (i) => DataEngine.jsonToHtml(DataEngine.xmlToJson(i)) },
 
-        const GradientGen = () => {
-            const [c1, setC1] = useState('#4f46e5');
-            const [c2, setC2] = useState('#ec4899');
-            const css = `background: linear-gradient(to right, ${c1}, ${c2});`;
-            return (
-                <div className="flex flex-col h-full gap-4">
-                    <div className="flex-1 rounded-xl shadow-lg transition-all" style={{background: `linear-gradient(to right, ${c1}, ${c2})`}}></div>
-                    <div className="flex gap-4 justify-center">
-                        <input type="color" value={c1} onChange={e=>setC1(e.target.value)} className="h-10 w-10 cursor-pointer"/>
-                        <input type="color" value={c2} onChange={e=>setC2(e.target.value)} className="h-10 w-10 cursor-pointer"/>
-                    </div>
-                    <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded font-mono text-sm text-center select-all">{css}</div>
-                </div>
-            );
-        };
+    // 2. FILES
+    'file-b64': { cat: 'file', name: 'File to Base64', type: 'file', run: async (f) => new Promise(r => {
+        const reader = new FileReader();
+        reader.onload = () => r(reader.result);
+        reader.readAsDataURL(f);
+    })},
+    'b64-file': { cat: 'file', name: 'Base64 to File', desc: 'Decodes Base64 to Blob (Download)', type: 'custom', component: 'b64dl' },
 
-        const ContrastChecker = () => {
-            const [bg, setBg] = useState('#ffffff');
-            const [fg, setFg] = useState('#000000');
-            // Simplified calculation for demo
-            const getLum = (hex) => {
-                const rgb = parseInt(hex.substring(1), 16);
-                const r = (rgb >> 16) & 0xff; const g = (rgb >>  8) & 0xff; const b = (rgb >>  0) & 0xff;
-                return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            };
-            const ratio = (() => {
-                const l1 = getLum(bg); const l2 = getLum(fg);
-                return ((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)).toFixed(2);
-            })();
-            const pass = ratio >= 4.5;
-            
-            return (
-                <div className="flex flex-col h-full gap-4">
-                    <div className="flex-1 flex items-center justify-center rounded-xl border" style={{backgroundColor: bg, color: fg}}>
-                        <span className="text-4xl font-bold">Read Me</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col"><label className="text-xs font-bold">Background</label><div className="flex gap-2"><input type="color" value={bg} onChange={e=>setBg(e.target.value)}/><input className="w-full border rounded px-2" value={bg} onChange={e=>setBg(e.target.value)}/></div></div>
-                        <div className="flex flex-col"><label className="text-xs font-bold">Foreground</label><div className="flex gap-2"><input type="color" value={fg} onChange={e=>setFg(e.target.value)}/><input className="w-full border rounded px-2" value={fg} onChange={e=>setFg(e.target.value)}/></div></div>
-                    </div>
-                    <div className={`p-4 rounded text-center font-bold ${pass?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>
-                        Ratio: {ratio} {pass ? "(Pass WCAG AA)" : "(Fail)"}
-                    </div>
-                </div>
-            );
-        };
+    // 3. DEV TOOLS
+    'diff':      { cat: 'dev', name: 'Diff Check', type: 'custom', component: 'diff' },
+    'regex':     { cat: 'dev', name: 'RegEx Tester', type: 'custom', component: 'regex' },
+    'color':     { cat: 'dev', name: 'Color Converter', type: 'custom', component: 'color' },
+    'timestamp': { cat: 'dev', name: 'Timestamp', type: 'custom', component: 'timestamp' },
+    'speed':     { cat: 'dev', name: 'Speed Test', type: 'custom', component: 'speed' },
+    'htaccess':  { cat: 'dev', name: '.htaccess Gen', run: () => "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php?/$1 [L]" },
 
-        const Stopwatch = () => {
-            const [time, setTime] = useState(0);
-            const [running, setRunning] = useState(false);
-            useEffect(() => {
-                let interval;
-                if (running) interval = setInterval(() => setTime(prev => prev + 10), 10);
-                else clearInterval(interval);
-                return () => clearInterval(interval);
-            }, [running]);
-            return (
-                <div className="flex flex-col items-center justify-center h-full gap-6">
-                    <div className="text-6xl font-mono tabular-nums">
-                        {("0" + Math.floor((time / 60000) % 60)).slice(-2)}:
-                        {("0" + Math.floor((time / 1000) % 60)).slice(-2)}:
-                        {("0" + ((time / 10) % 100)).slice(-2)}
-                    </div>
-                    <div className="flex gap-4">
-                        <button onClick={() => setRunning(!running)} className={`px-6 py-2 rounded-full text-white ${running ? 'bg-red-500' : 'bg-green-500'}`}>
-                            {running ? "Stop" : "Start"}
-                        </button>
-                        <button onClick={() => { setRunning(false); setTime(0); }} className="px-6 py-2 rounded-full bg-gray-200 dark:bg-gray-700">Reset</button>
-                    </div>
-                </div>
-            );
-        };
+    // 4. CRYPTO
+    'sha1':      { cat: 'crypto', name: 'SHA-1', run: (i) => CryptoEngine.hash(i, 'SHA1') },
+    'md5':       { cat: 'crypto', name: 'MD5', run: (i) => CryptoEngine.hash(i, 'MD5') },
+    'sha256':    { cat: 'crypto', name: 'SHA-256', run: (i) => CryptoEngine.hash(i, 'SHA256') },
+    'sha512':    { cat: 'crypto', name: 'SHA-512', run: (i) => CryptoEngine.hash(i, 'SHA512') },
+    'b64-enc':   { cat: 'crypto', name: 'Base64 Encode', run: (i) => btoa(i) },
+    'b64-dec':   { cat: 'crypto', name: 'Base64 Decode', run: (i) => atob(i) },
+    'url-enc':   { cat: 'crypto', name: 'URL Encode', run: (i) => encodeURIComponent(i) },
+    'url-dec':   { cat: 'crypto', name: 'URL Decode', run: (i) => decodeURIComponent(i) },
 
-        const ColorExplorer = ({ color, setColor }) => (
-          <div className="flex flex-col gap-6 items-center justify-center h-full">
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-32 h-32 cursor-pointer border-4 border-gray-200 rounded-xl" />
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 font-bold uppercase">HEX</div>
-                <div className="text-xl font-mono dark:text-white select-all">{color.toUpperCase()}</div>
-              </div>
-              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <div className="text-xs text-gray-500 font-bold uppercase">RGB</div>
-                <div className="text-xl font-mono dark:text-white select-all">
-                  {parseInt(color.slice(1, 3), 16)}, {parseInt(color.slice(3, 5), 16)}, {parseInt(color.slice(5, 7), 16)}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+    // 5. FORMATTING
+    'json-fmt':  { cat: 'format', name: 'JSON Format', run: (i) => window.prettier.format(i, { parser: 'json', plugins: window.prettierPlugins }) },
+    'js-fmt':    { cat: 'format', name: 'JS Format', run: (i) => window.prettier.format(i, { parser: 'babel', plugins: window.prettierPlugins }) },
+    'css-fmt':   { cat: 'format', name: 'CSS Format', run: (i) => window.prettier.format(i, { parser: 'css', plugins: window.prettierPlugins }) },
+    'html-fmt':  { cat: 'format', name: 'HTML Format', run: (i) => window.prettier.format(i, { parser: 'html', plugins: window.prettierPlugins }) },
+    'sql-fmt':   { cat: 'format', name: 'SQL Format', run: (i) => i.replace(/\s+/g,' ').replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|INSERT|UPDATE|DELETE)\b/gi, '\n$1').trim() },
+    'py-fmt':    { cat: 'format', name: 'Python Indent', run: (i) => i.replace(/:\s*$/gm, ':\n    ') }, 
 
-        // --- MAIN APP ---
-        const App = () => {
-            const [activeToolId, setActiveToolId] = useState('json-fmt');
-            const [input, setInput] = useState('');
-            const [input2, setInput2] = useState('');
-            const [output, setOutput] = useState('');
-            const [error, setError] = useState('');
-            const [notif, setNotif] = useState(null);
-            const [search, setSearch] = useState('');
-            const [sbOpen, setSbOpen] = useState(false);
-            const [isDark, setIsDark] = useState(false);
-            const [imgFile, setImgFile] = useState(null);
-            const [color, setColor] = useState('#4f46e5');
-            const [cats, setCats] = useState({});
-            const fileRef = useRef(null);
+    // 6. IMAGE
+    'img-resize': { cat: 'image', name: 'Image Resizer', type: 'custom', component: 'img-resize' },
+    'favicon':    { cat: 'image', name: 'Favicon Gen', type: 'custom', component: 'favicon' },
 
-            useEffect(() => { document.documentElement.classList.toggle('dark', isDark); }, [isDark]);
-            const notify = (msg, type='success') => { setNotif({msg,type}); setTimeout(()=>setNotif(null),3000); };
+    // 7. MINIFY
+    'json-min':   { cat: 'minify', name: 'JSON Minify', run: (i) => JSON.stringify(JSON.parse(i)) },
+    'css-min':    { cat: 'minify', name: 'CSS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s+/g," ").replace(/ ?([:;{}]) ?/g,"$1").trim() },
+    'js-min':     { cat: 'minify', name: 'JS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").split('\n').map(l=>l.trim()).join(' ') },
 
-            const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                  if (!window.XLSX) { notify("Engine Loading...", "error"); return; }
-                  const reader = new FileReader();
-                  reader.onload = (evt) => {
-                    try {
-                      const data = evt.target.result;
-                      const workbook = window.XLSX.read(data, { type: 'binary' });
-                      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                      if (activeToolId.includes('json')) {
-                         setInput(JSON.stringify(window.XLSX.utils.sheet_to_json(firstSheet), null, 2));
-                      } else {
-                         setInput(window.XLSX.utils.sheet_to_csv(firstSheet));
-                      }
-                      notify("Excel Loaded");
-                    } catch (err) { setError("Failed to parse Excel"); }
-                  };
-                  reader.readAsBinaryString(file);
-                  return;
-                }
+    // 8. NET
+    'ip':         { cat: 'net', name: 'My IP', type: 'custom', component: 'ip' },
+    'router':     { cat: 'net', name: 'Router Pass', type: 'custom', component: 'router' },
+    'email-val':  { cat: 'net', name: 'Email Valid', run: (i) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i) ? "Valid Email" : "Invalid Email" },
+
+    // 9. NUMBER
+    'bin-dec':    { cat: 'number', name: 'Bin to Dec', run: (i) => NumberEngine.convert(i, 2, 10) },
+    'bin-hex':    { cat: 'number', name: 'Bin to Hex', run: (i) => NumberEngine.convert(i, 2, 16) },
+    'bin-oct':    { cat: 'number', name: 'Bin to Oct', run: (i) => NumberEngine.convert(i, 2, 8) },
+    'dec-bin':    { cat: 'number', name: 'Dec to Bin', run: (i) => NumberEngine.convert(i, 10, 2) },
+    'dec-hex':    { cat: 'number', name: 'Dec to Hex', run: (i) => NumberEngine.convert(i, 10, 16) },
+    'dec-oct':    { cat: 'number', name: 'Dec to Oct', run: (i) => NumberEngine.convert(i, 10, 8) },
+    'hex-dec':    { cat: 'number', name: 'Hex to Dec', run: (i) => NumberEngine.convert(i, 16, 10) },
+    'hex-bin':    { cat: 'number', name: 'Hex to Bin', run: (i) => NumberEngine.convert(i, 16, 2) },
+    'oct-dec':    { cat: 'number', name: 'Oct to Dec', run: (i) => NumberEngine.convert(i, 8, 10) },
+    'unit-cf':    { cat: 'number', name: '°C to °F', run: (i) => NumberEngine.unit(i, 'c-f') },
+    'unit-bytes': { cat: 'number', name: 'Data Size', run: (i) => NumberEngine.dataSize(i) },
+
+    // 10. SEO
+    'keyword':    { cat: 'seo', name: 'Keyword Gen', run: (i) => {
+       const words = i.split(',');
+       let res = [];
+       words.forEach(w1 => words.forEach(w2 => { if(w1!==w2) res.push(`${w1.trim()} ${w2.trim()}`)}));
+       return res.join('\n');
+    }},
+
+    // 11. STRING
+    'word-cnt':   { cat: 'string', name: 'Word Count', run: (i) => `Words: ${i.trim().split(/\s+/).length}\nChars: ${i.length}\nLines: ${i.split('\n').length}` },
+    'str-rev':    { cat: 'string', name: 'Reverse', run: (i) => i.split('').reverse().join('') },
+    'str-hex':    { cat: 'string', name: 'Text to Hex', run: (i) => StringEngine.textToHex(i) },
+    'hex-str':    { cat: 'string', name: 'Hex to Text', run: (i) => StringEngine.hexToText(i) },
+    'strip-tags': { cat: 'string', name: 'Strip HTML', run: (i) => StringEngine.stripTags(i) },
+    'esc-html':   { cat: 'string', name: 'Escape HTML', run: (i) => StringEngine.escapeHtml(i) },
+  };
+
+  const categories = [
+    { id: 'data', name: 'Data', icon: Database },
+    { id: 'file', name: 'Files', icon: FileType },
+    { id: 'dev', name: 'Dev Tools', icon: Wrench },
+    { id: 'crypto', name: 'Crypto', icon: Lock },
+    { id: 'format', name: 'Format', icon: Type },
+    { id: 'image', name: 'Images', icon: ImageIcon },
+    { id: 'minify', name: 'Minify', icon: Maximize2 },
+    { id: 'net', name: 'Network', icon: Globe },
+    { id: 'number', name: 'Numbers', icon: Hash },
+    { id: 'string', name: 'Strings', icon: List },
+    { id: 'seo', name: 'SEO', icon: Search },
+  ];
+
+  const activeTool = tools[activeToolId] || tools['json-fmt'];
+
+  const handleRun = async () => {
+    setError('');
+    setOutput('');
+    try {
+      if (activeTool.type === 'file') {
+        if (!imageFile) throw new Error("Please select a file first");
+        const res = await activeTool.run(imageFile);
+        setOutput(res);
+        notify("File Processed");
+      } else {
+        if (!input && activeTool.type !== 'custom') return;
+        const res = await activeTool.run(input);
+        setOutput(res);
+        notify("Done");
+      }
+    } catch (e) {
+      setError(e.message);
+      notify("Error", 'error');
+    }
+  };
+
+  const renderContent = () => {
+    // 1. DIFF
+    if (activeTool.component === 'diff') {
+       return (
+         <div className="h-full flex flex-col gap-2">
+           <div className="flex gap-2 h-1/3">
+              <Editor value={input} onChange={setInput} placeholder="Original Text" />
+              <Editor value={input2} onChange={setInput2} placeholder="New Text" />
+           </div>
+           <div className="flex-1 border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+              <DiffViewer oldText={input} newText={input2} />
+           </div>
+         </div>
+       );
+    }
+
+    // 2. IMAGE RESIZE / FAVICON
+    if (activeTool.component === 'img-resize' || activeTool.component === 'favicon') {
+      return (
+        <div className="h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-8">
+           <input type="file" accept="image/*" onChange={(e) => {
+             const f = e.target.files[0];
+             if(f) {
                 const reader = new FileReader();
-                reader.onload = (evt) => { setInput(evt.target.result); notify("File Loaded"); };
-                reader.readAsText(file);
-            };
+                reader.onload = (ev) => {
+                   const img = new Image();
+                   img.onload = () => {
+                      const size = activeTool.component === 'favicon' ? 32 : (img.width / 2);
+                      const canvas = document.createElement('canvas');
+                      canvas.width = size;
+                      canvas.height = size;
+                      const ctx = canvas.getContext('2d');
+                      ctx.drawImage(img, 0, 0, size, size);
+                      setOutput(canvas.toDataURL());
+                   };
+                   img.src = ev.target.result;
+                }
+                reader.readAsDataURL(f);
+             }
+           }} />
+           <p className="mt-4 text-gray-500">{activeTool.component === 'favicon' ? "Generates 32x32 Favicon" : "Resizes to 50% width"}</p>
+           {output && <img src={output} className="mt-4 border shadow-lg max-h-64" alt="Result" />}
+           {output && <a href={output} download="processed.png" className="mt-2 text-indigo-600 underline">Download</a>}
+        </div>
+      );
+    }
 
-            const tools = {
-                // DATA
-                'csv-html': { cat:'data', name:'CSV to HTML', desc:'WHAT: Converts comma-separated values into an HTML table structure. WHY: To quickly embed spreadsheet data into webpages or emails without manual coding. WHEN: You need to display a dataset on a website.', run: i => DataEngine.csvToHtml(i) },
-                'csv-json': { cat:'data', name:'CSV to JSON', desc:'WHAT: Transforms rows and columns of CSV data into a JavaScript Object Notation (JSON) array. WHY: To make spreadsheet data usable in web applications and APIs. WHEN: Migrating legacy data or processing file uploads.', run: i => DataEngine.csvToJson(i) },
-                'csv-tsv':  { cat:'data', name:'CSV to TSV', desc:'WHAT: Replaces comma separators in your data with tab characters. WHY: To prepare data for copy-pasting into Excel or other spreadsheet software that prefers tabs. WHEN: Moving data between different text editors or sheets.', run: i => DataEngine.csvToTsv(i) },
-                'csv-xml':  { cat:'data', name:'CSV to XML', desc:'WHAT: Wraps CSV rows in XML tags to create a structured document. WHY: To import data into older legacy systems that strictly require XML input. WHEN: Interfacing with enterprise software or SOAP APIs.', run: i => DataEngine.jsonToXml(DataEngine.csvToJson(i)) },
-                'json-csv': { cat:'data', name:'JSON to CSV', desc:'WHAT: Flattens nested JSON objects into a simple row-and-column CSV format. WHY: To allow non-developers to view system data in Excel or Google Sheets. WHEN: Generating reports from database dumps.', run: i => DataEngine.jsonToCsv(i) },
-                'json-tsv': { cat:'data', name:'JSON to TSV', desc:'WHAT: Converts JSON structure into tab-separated lines. WHY: For quick, clean copy-pasting of data into clipboard-sensitive applications. WHEN: Auditing data or moving it to a simple text list.', run: i => DataEngine.jsonToTsv(i) },
-                'json-xml': { cat:'data', name:'JSON to XML', desc:'WHAT: Translates JSON key-value pairs into nested XML nodes. WHY: To ensure compatibility with systems that do not support JSON. WHEN: Sending data to XML-based web services.', run: i => DataEngine.jsonToXml(i) },
-                'json-html':{ cat:'data', name:'JSON to HTML', desc:'WHAT: Renders raw JSON code as a visual HTML table. WHY: To make complex data structures readable for humans at a glance. WHEN: Debugging API responses or reviewing data.', run: i => DataEngine.jsonToHtml(i) },
-                'xml-json': { cat:'data', name:'XML to JSON', desc:'WHAT: Parses XML hierarchies into manageable JSON objects. WHY: To use data from RSS feeds or legacy APIs in modern JavaScript apps. WHEN: Consuming external data feeds.', run: i => DataEngine.xmlToJson(i) },
-                'xml-csv':  { cat:'data', name:'XML to CSV', desc:'WHAT: Extracts data from XML nodes and organizes it into columns. WHY: To audit or analyze XML data using spreadsheet tools. WHEN: Reviewing large XML exports.', run: i => DataEngine.jsonToCsv(DataEngine.xmlToJson(i)) },
-                'file-b64': { cat:'data', name:'File to Base64', desc:'WHAT: Encodes binary files (images, PDFs) into a text string. WHY: To embed files directly into HTML/CSS code or JSON payloads. WHEN: Creating self-contained documents or avoiding external requests.', type:'file', run: async (f) => new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(f); })},
+    // 3. COLOR
+    if (activeTool.component === 'color') {
+      return <ColorExplorer color={color} setColor={setColor} />;
+    }
 
-                // VIBE / PROMPTING
-                'prompt': { cat:'vibe', name:'Prompt Structurer', desc:'WHAT: Builds a clear, optimized prompt with Role, Context, and Task sections. WHY: To reduce AI hallucinations and get more accurate, high-quality answers. WHEN: Starting a new complex task with an LLM.', type:'custom', component:'prompt' },
-                'ctx-clean': { cat:'vibe', name:'Context Cleaner', desc:'WHAT: Strips comments, console logs, and whitespace from code. WHY: To reduce token usage and fit more relevant logic into the AI context window. WHEN: Pasting large code blocks for AI review.', run: i => VibeEngine.cleanContext(i) },
-                'tree': { cat:'vibe', name:'File Tree Gen', desc:'WHAT: Visualizes a list of file paths as a hierarchical tree structure. WHY: To help AI understand your project architecture and file relationships. WHEN: Explaining your codebase structure to an AI.', run: i => VibeEngine.generateTree(i) },
-                'react-gen': { cat:'vibe', name:'React Boilerplate', desc:'WHAT: Instantly generates the starter code for a React functional component. WHY: To save time on typing repetitive setup code. WHEN: Creating a new file in your project.', run: i => VibeEngine.reactBoilerplate(i) },
-                'token': { cat:'vibe', name:'Token Estimator', desc:'WHAT: Calculates an approximate token count for your text. WHY: To ensure your prompt fits within the LLM context limits. WHEN: Preparing long documents for analysis.', run: i => VibeEngine.tokenEstimate(i) },
+    // 4. SPEED TEST
+    if (activeTool.component === 'speed') {
+       return (
+         <div className="flex flex-col items-center justify-center h-full gap-4">
+            <button onClick={async () => {
+               setOutput("Testing...");
+               const start = Date.now();
+               try {
+                 await fetch('https://unpkg.com/react@18/umd/react.production.min.js?t='+start); 
+                 const duration = Date.now() - start;
+                 setOutput(`Latency: ${duration}ms\n(Estimated via CDN fetch)`);
+               } catch(e) { setOutput("Connection Failed"); }
+            }} className="px-8 py-4 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 font-bold text-lg">Start Speed Test</button>
+            <pre className="text-2xl font-mono">{output}</pre>
+         </div>
+       );
+    }
 
-                // DEV
-                'json-clean': { cat:'dev', name:'JSON Fixer', desc:'WHAT: Automatically repairs syntax errors in broken JSON strings. WHY: To rescue data from bad scrapes or malformed API responses. WHEN: You get "Unexpected token" errors.', run: i => TextEngine.cleanJson(i) },
-                'jwt': { cat:'dev', name:'JWT Decoder', desc:'WHAT: Decodes the payload of a JSON Web Token without verification. WHY: To inspect user claims, roles, and expiration times. WHEN: Debugging login or authentication issues.', run: i => JSON.stringify(JSON.parse(atob(i.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))),null,2) },
-                'md-html': { cat:'dev', name:'Markdown Preview', desc:'WHAT: Renders Markdown text as formatted HTML in real-time. WHY: To check headings, links, and lists before publishing. WHEN: Writing README files or blog posts.', type:'custom', component:'markdown' },
-                'diff': { cat:'dev', name:'Diff Viewer', desc:'WHAT: Highlights differences (additions/deletions) between two texts. WHY: To identify exactly what changed between versions. WHEN: Reviewing code edits or comparing document drafts.', type:'custom', component:'diff' },
-                'regex': { cat:'dev', name:'RegEx Tester', desc:'WHAT: Checks if a Regular Expression pattern matches a test string. WHY: To verify complex matching logic before implementing it in code. WHEN: Writing validation rules for forms or search logic.', type:'custom', component:'regex' },
-                'timestamp': { cat:'dev', name:'Unix Timestamp', desc:'WHAT: Displays current Unix Epoch time and converts dates. WHY: To synchronize time-sensitive data across systems. WHEN: Debugging server logs or database entries.', type:'custom', component:'timestamp' },
-                'htaccess': { cat:'dev', name:'.htaccess Gen', desc:'WHAT: Creates standard rewrite rules for Apache servers. WHY: To properly route URL requests and secure directories. WHEN: Deploying a PHP or static site.', run: () => "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php?/$1 [L]" },
+    // 5. IP
+    if (activeTool.component === 'ip') {
+       return (
+         <div className="flex flex-col items-center justify-center h-full gap-4">
+           <button onClick={() => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>setOutput(d.ip))} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Check My IP</button>
+           <div className="text-4xl font-mono text-gray-800 dark:text-white">{output}</div>
+         </div>
+       );
+    }
 
-                // TEXT
-                'case': { cat:'text', name:'Case Converter', desc:'WHAT: Transforms text into specific capitalization styles (Camel, Snake, etc.). WHY: To adhere to variable naming conventions in different languages. WHEN: Refactoring code or renaming files.', run: i => `UPPER: ${TextEngine.caseConvert(i,'upper')}\nlower: ${TextEngine.caseConvert(i,'lower')}\ncamel: ${TextEngine.caseConvert(i,'camel')}` },
-                'lorem': { cat:'text', name:'Lorem Ipsum', desc:'WHAT: Generates placeholder paragraph text. WHY: To fill layout space during design phases. WHEN: Wireframing websites or testing typography.', run: () => TextEngine.lorem(50) },
-                'slug': { cat:'text', name:'Slug Generator', desc:'WHAT: Converts titles into URL-safe, hyphenated strings. WHY: To create readable and SEO-friendly links. WHEN: Publishing new content or naming resources.', run: i => TextEngine.slugify(i) },
-                'word-cnt': { cat:'text', name:'Word Counter', desc:'WHAT: Calculates character, word, and line counts. WHY: To track content length requirements. WHEN: Writing essays, tweets, or database fields.', run: i => `Words: ${i.trim().split(/\s+/).length}\nChars: ${i.length}` },
-                'str-rev': { cat:'text', name:'Reverse Text', desc:'WHAT: Inverts the order of characters in a string. WHY: For testing algorithms or simple obfuscation. WHEN: Solving coding challenges or testing palindromes.', run: i => i.split('').reverse().join('') },
-                'strip-tags': { cat:'text', name:'Strip HTML', desc:'WHAT: Removes all HTML tags, leaving only raw text. WHY: To clean up copy-pasted content from the web. WHEN: Processing scraped data for analysis.', run: i => StringEngine.stripTags(i) },
+    // 6. ROUTER
+    if (activeTool.component === 'router') {
+      return (
+        <div className="h-full overflow-auto">
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+             <thead className="bg-gray-100 dark:bg-gray-700 uppercase"><tr><th className="px-4 py-3">Brand</th><th>User</th><th>Pass</th></tr></thead>
+             <tbody>
+               {[
+                 ['Linksys','admin','admin'],['Netgear','admin','password'],['D-Link','admin','(blank)'],
+                 ['TP-Link','admin','admin'],['Cisco','cisco','cisco'],['Asus','admin','admin']
+               ].map(([b,u,p], i) => (
+                 <tr key={i} className="border-b dark:border-gray-700"><td className="px-4 py-2 font-bold">{b}</td><td>{u}</td><td>{p}</td></tr>
+               ))}
+             </tbody>
+          </table>
+        </div>
+      );
+    }
 
-                // CRYPTO
-                'pass': { cat:'crypto', name:'Password Gen', desc:'WHAT: Creates strong, random passwords. WHY: To ensure account security with high entropy. WHEN: Creating new user accounts or resetting keys.', run: () => SecurityEngine.password(24) },
-                'uuid': { cat:'crypto', name:'UUID Gen', desc:'WHAT: Generates unique 36-character identifiers (v4). WHY: To create database keys that never collide. WHEN: Seeding databases or assigning session IDs.', run: () => SecurityEngine.uuid() },
-                'sha1': { cat:'crypto', name:'SHA-1', desc:'WHAT: Generates a 160-bit hash of the input text. WHY: To verify file integrity quickly. WHEN: Checking downloaded files against a checksum.', run: i => CryptoEngine.hash(i, 'SHA1') },
-                'md5': { cat:'crypto', name:'MD5', desc:'WHAT: Creates a widely compatible 128-bit hash. WHY: For non-cryptographic checksums and legacy verification. WHEN: verifying file transfers.', run: i => CryptoEngine.hash(i, 'MD5') },
-                'sha256': { cat:'crypto', name:'SHA-256', desc:'WHAT: Generates a secure, standard 256-bit hash. WHY: To securely store identifiers or verify critical data. WHEN: Storing sensitive information.', run: i => CryptoEngine.hash(i, 'SHA256') },
-                'b64-enc': { cat:'crypto', name:'Base64 Encode', desc:'WHAT: Converts binary/text data into ASCII strings. WHY: To safely transport data over protocols like HTTP. WHEN: Sending binary data in APIs or email.', run: i => btoa(i) },
-                'b64-dec': { cat:'crypto', name:'Base64 Decode', desc:'WHAT: Decodes Base64 strings back to original format. WHY: To read encoded data from headers or payloads. WHEN: Debugging web traffic.', run: i => atob(i) },
-                'url-enc': { cat:'crypto', name:'URL Encode', desc:'WHAT: Escapes special characters for use in URLs. WHY: To prevent broken links when data contains spaces or symbols. WHEN: Constructing query parameters.', run: i => encodeURIComponent(i) },
-                'url-dec': { cat:'crypto', name:'URL Decode', desc:'WHAT: Converts escaped URL characters back to text. WHY: To read the actual content of a URL parameter. WHEN: Debugging routing or API requests.', run: i => decodeURIComponent(i) },
+    // DEFAULT 2-PANE LAYOUT
+    return (
+      <div className="flex flex-col lg:flex-row gap-4 h-[500px] lg:h-[600px]">
+        <div className="flex-1 flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Input</label>
+               {activeTool.type !== 'file' && (
+                 <>
+                   <input 
+                     type="file" 
+                     ref={fileInputRef} 
+                     onChange={handleFileUpload} 
+                     className="hidden" 
+                     accept=".txt,.csv,.json,.xml,.js,.html,.css,.sql,.xlsx,.xls,.md"
+                   />
+                   <button 
+                     onClick={() => fileInputRef.current.click()} 
+                     className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-md transition-colors"
+                     title="Upload CSV, JSON, Excel, TXT"
+                   >
+                     <Upload size={12} /> Upload File
+                   </button>
+                 </>
+               )}
+            </div>
+            {activeTool.type === 'file' && <span className="text-xs text-indigo-600">File Mode</span>}
+          </div>
+          {activeTool.type === 'file' ? (
+             <div className="flex-1 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                <input type="file" onChange={(e) => setImageFile(e.target.files[0])} className="p-4" />
+             </div>
+          ) : (
+             <Editor value={input} onChange={setInput} placeholder="Paste content or upload a file (Excel, CSV, JSON, TXT)..." />
+          )}
+        </div>
 
-                // FORMAT
-                'json-fmt': { cat:'format', name:'JSON Format', desc:'WHAT: Indents and spaces JSON data perfectly. WHY: To make dense data blocks readable and standardized. WHEN: Reviewing API payloads or config files.', run: i => window.prettier.format(i, { parser: 'json', plugins: window.prettierPlugins }) },
-                'js-fmt': { cat:'format', name:'JS Format', desc:'WHAT: reformats JavaScript code for readability. WHY: To fix indentation and spacing errors. WHEN: Reviewing messy or minified code.', run: i => window.prettier.format(i, { parser: 'babel', plugins: window.prettierPlugins }) },
-                'css-fmt': { cat:'format', name:'CSS Format', desc:'WHAT: Cleans up CSS stylesheets. WHY: To organize rules and make editing easier. WHEN: Working on front-end styling.', run: i => window.prettier.format(i, { parser: 'css', plugins: window.prettierPlugins }) },
-                'html-fmt': { cat:'format', name:'HTML Format', desc:'WHAT: Corrects indentation in HTML code. WHY: To visualize the structure of the DOM tree. WHEN: Fixing layout bugs or nesting errors.', run: i => window.prettier.format(i, { parser: 'html', plugins: window.prettierPlugins }) },
-                'sql-fmt': { cat:'format', name:'SQL Format', desc:'WHAT: Capitalizes keywords and indents SQL queries. WHY: To understand complex database logic easily. WHEN: Writing or optimizing database queries.', run: i => i.replace(/\s+/g,' ').replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|INSERT|UPDATE|DELETE)\b/gi, '\n$1').trim() },
+        <div className="flex lg:flex-col justify-center gap-2 py-2 lg:py-0">
+           <button onClick={handleRun} className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all active:scale-90" title="Execute">
+             <ArrowRightLeft className="lg:rotate-0 rotate-90" />
+           </button>
+           <button onClick={()=>{setInput(''); setOutput(''); setInput2(''); setImageFile(null)}} className="p-3 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all" title="Clear">
+             <Trash2 size={20} />
+           </button>
+        </div>
 
-                // IMAGE & COLOR
-                'img-tools': { cat:'image', name:'Image Tools', desc:'WHAT: Resizes and compresses images. WHY: To improve website loading speed and reduce file size. WHEN: Preparing assets for the web.', type:'custom', component:'img-resize' },
-                'favicon': { cat:'image', name:'Favicon Gen', desc:'WHAT: Creates a standard 32x32 website icon. WHY: To brand your browser tab. WHEN: Launching a new website.', type:'custom', component:'favicon' },
-                'color': { cat:'image', name:'Color Converter', desc:'WHAT: Translates between HEX and RGB values. WHY: To ensure consistent colors across design tools and CSS. WHEN: Implementing UI designs.', type:'custom', component:'color' },
-                'gradient': { cat:'image', name:'Gradient Gen', desc:'WHAT: Creates CSS code for 2-color gradients. WHY: To add visual depth to backgrounds quickly. WHEN: Styling UI components.', type:'custom', component:'gradient' },
-                'contrast': { cat:'image', name:'Contrast Check', desc:'WHAT: Measures readability between text and background. WHY: To ensure your site is accessible to everyone (WCAG). WHEN: Choosing a color palette.', type:'custom', component:'contrast' },
+        <div className="flex-1 flex flex-col">
+           <div className="flex justify-between items-center mb-2">
+             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Result</label>
+             <button onClick={()=>copyToClipboard(output) && notify("Copied!")} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline"><Copy size={12}/> Copy</button>
+           </div>
+           <Editor value={output} readOnly placeholder="Output will appear here..." />
+        </div>
+      </div>
+    );
+  };
 
-                // MINIFY
-                'json-min': { cat:'minify', name:'JSON Minify', desc:'WHAT: Removes all unnecessary whitespace from JSON. WHY: To minimize data size for transfer. WHEN: Preparing payloads for production APIs.', run: i => JSON.stringify(JSON.parse(i)) },
-                'css-min': { cat:'minify', name:'CSS Minify', desc:'WHAT: Strips comments and spaces from CSS. WHY: To reduce page load times. WHEN: Deploying a website to production.', run: i => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s+/g," ").replace(/ ?([:;{}]) ?/g,"$1").trim() },
-                'js-min': { cat:'minify', name:'JS Minify', desc:'WHAT: Compresses JavaScript code. WHY: To optimize script execution speed. WHEN: Building final app assets.', run: i => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").split('\n').map(l=>l.trim()).join(' ') },
+  return (
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-200 ${isDark ? 'dark' : ''}`}>
+      
+      {/* Notifications */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-top-5 ${
+          notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white'
+        }`}>
+          {notification.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
+          <span className="font-semibold text-sm">{notification.msg}</span>
+        </div>
+      )}
 
-                // MISC
-                'qr': { cat:'misc', name:'QR Generator', desc:'WHAT: Creates a scannable QR code from text/URL. WHY: To bridge physical items to digital links. WHEN: creating posters or business cards.', type:'custom', component:'qr' },
-                'metro': { cat:'misc', name:'Metronome', desc:'WHAT: Plays a steady beat at a set BPM. WHY: To maintain consistent timing/rhythm. WHEN: Practicing music or presentations.', type:'custom', component:'metro' },
-                'stopwatch': { cat:'misc', name:'Stopwatch', desc:'WHAT: Measures elapsed time. WHY: To track task duration. WHEN: Productivity sprints or workouts.', type:'custom', component:'stopwatch' },
-                'speed': { cat:'misc', name:'Speed Test', desc:'WHAT: Estimates your download latency. WHY: To check if your connection is lagging. WHEN: Troubleshooting slow internet.', type:'custom', component:'speed' },
-                'ip': { cat:'misc', name:'My IP', desc:'WHAT: Displays your public IP address. WHY: To identify your network identity. WHEN: Configuring server whitelists.', type:'custom', component:'ip' },
-                'unit': { cat:'misc', name:'Unit Converter', desc:'WHAT: Converts Meters to Feet/Inches. WHY: To translate measurements between standards. WHEN: Working with international specs.', run: i => `Feet: ${(i*3.28084).toFixed(2)}\nInches: ${(i*39.3701).toFixed(2)}` },
-                'time': { cat:'misc', name:'Timezone', desc:'WHAT: Shows current time in UTC and ISO formats. WHY: To verify server sync or coordinate globally. WHEN: Scheduling or debugging logs.', run: () => `Local: ${new Date().toString()}\nUTC: ${new Date().toUTCString()}\nISO: ${new Date().toISOString()}` },
+      {/* Navbar */}
+      <nav className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 fixed w-full top-0 z-30 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500"><Menu /></button>
+          <div className="bg-indigo-600 p-1.5 rounded-lg shadow-lg shadow-indigo-500/30">
+            <Zap className="text-white" size={24} fill="currentColor" />
+          </div>
+          <div>
+             <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">Apex Utility Suite</span>
+             <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5">Vibe Coding Tools</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+           <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-100 dark:border-green-900/30">
+              <ShieldCheck size={14} /> <span>Privacy Active</span>
+           </div>
+           <button onClick={() => setIsDark(!isDark)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+             {isDark ? <Sun size={20} /> : <Moon size={20} />}
+           </button>
+        </div>
+      </nav>
 
-                // NUMBERS
-                'bin-dec': { cat:'number', name:'Bin to Dec', desc:'WHAT: Translates binary (101) to decimal (5). WHY: To read machine data in human numbers. WHEN: Debugging low-level systems.', run: i => NumberEngine.convert(i, 2, 10) },
-                'dec-hex': { cat:'number', name:'Dec to Hex', desc:'WHAT: Converts decimal numbers to Hexadecimal. WHY: To represent memory addresses or colors. WHEN: Systems programming.', run: i => NumberEngine.convert(i, 10, 16) },
-                'unit-bytes': { cat:'number', name:'Data Size', desc:'WHAT: Converts raw bytes to KB/MB/GB. WHY: To make file sizes readable. WHEN: Analyzing storage or downloads.', run: i => NumberEngine.dataSize(i) },
-            };
-
-            // Order: DATA -> FORMAT -> DEVELOPER -> MINIFY -> VIBE -> SECURITY -> TOOLS -> TEXT -> NUMBERS -> COLOR/IMG
-            const categories = [
-                {id:'data',name:'Data',icon:Database}, 
-                {id:'format',name:'Format',icon:Type}, 
-                {id:'dev',name:'Developer',icon:Wrench}, 
-                {id:'minify',name:'Minify',icon:Maximize2}, 
-                {id:'vibe',name:'Vibe / Prompting',icon:Sparkles}, // Moved here
-                {id:'crypto',name:'Security',icon:Lock}, 
-                {id:'misc',name:'Tools',icon:Globe}, 
-                {id:'text',name:'Text',icon:List}, 
-                {id:'number',name:'Numbers',icon:Hash}, 
-                {id:'image',name:'Color/Img',icon:Palette}
-            ];
-
-            const activeTool = tools[activeToolId] || tools['json-fmt'];
-
-            const handleRun = async () => {
-                setError(''); setOutput('');
-                try {
-                    if (activeTool.run) {
-                        const res = await activeTool.run(input || '');
-                        setOutput(res);
-                        notify("Done");
-                    }
-                } catch(e) { setError(e.message); }
-            };
-
-            const renderContent = () => {
-                if(activeTool.component === 'prompt') return (
-                    <div className="h-full flex flex-col lg:flex-row gap-4">
-                        <div className="flex-1"><PromptBuilder onGenerate={(p) => { setOutput(p); notify("Prompt Built"); }} /></div>
-                        <div className="flex-1"><Editor value={output} readOnly placeholder="Generated Prompt..." /></div>
+      <div className="flex pt-16 h-screen overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`fixed lg:static inset-y-0 left-0 z-20 w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} pt-16 lg:pt-0`}>
+          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+             <div className="relative">
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Find a tool..." 
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-gray-100 dark:bg-gray-900 border-none rounded-lg focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value.toLowerCase())}
+                />
+             </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-6 pt-4 custom-scrollbar">
+            {categories.map(cat => {
+               const catTools = Object.entries(tools).filter(([id, t]) => t.cat === cat.id && t.name.toLowerCase().includes(search));
+               if (catTools.length === 0) return null;
+               return (
+                  <div key={cat.id}>
+                    <div className="px-3 mb-2 flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      <cat.icon size={14} /> {cat.name}
                     </div>
-                );
-                if(activeTool.component === 'markdown') return <div className="h-full flex gap-2"><Editor value={input} onChange={setInput} placeholder="# Markdown" /><MarkdownViewer markdown={input}/></div>;
-                if(activeTool.component === 'diff') return <div className="h-full flex flex-col gap-2"><div className="flex gap-2 h-1/3"><Editor value={input} onChange={setInput} placeholder="Old" /><Editor value={input2} onChange={setInput2} placeholder="New" /></div><div className="flex-1 bg-white dark:bg-gray-800 border rounded overflow-auto p-2" dangerouslySetInnerHTML={{__html: window.Diff ? window.Diff.diffLines(input,input2).map(p=>`<span style="background:${p.added?'#dcfce7':p.removed?'#fee2e2':''}">${p.value}</span>`).join('') : ''}} /></div>;
-                if(activeTool.component === 'qr') return <QRGenerator text={input} />;
-                if(activeTool.component === 'metro') return <Metronome />;
-                if(activeTool.component === 'gradient') return <GradientGen />;
-                if(activeTool.component === 'contrast') return <ContrastChecker />;
-                if(activeTool.component === 'stopwatch') return <Stopwatch />;
-                if(activeTool.component === 'color') return <ColorExplorer color={color} setColor={setColor} />;
-                
-                // Regex
-                if(activeTool.component === 'regex') return (
-                    <div className="h-full flex flex-col gap-4">
-                        <div className="h-1/3 flex gap-2">
-                            <input className="flex-1 p-3 border rounded dark:bg-gray-800" placeholder="Regex Pattern (e.g. ^[a-z]+$)" value={input} onChange={e=>setInput(e.target.value)} />
-                            <input className="flex-1 p-3 border rounded dark:bg-gray-800" placeholder="Test String" value={input2} onChange={e=>setInput2(e.target.value)} />
-                        </div>
-                        <div className={`p-6 rounded-lg text-center font-bold text-xl ${input && input2 && new RegExp(input).test(input2) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {input && input2 ? (new RegExp(input).test(input2) ? "MATCH FOUND" : "NO MATCH") : "Enter pattern and string"}
-                        </div>
+                    <div className="space-y-0.5">
+                       {catTools.map(([id, tool]) => (
+                         <button
+                           key={id}
+                           onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
+                           className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                             activeToolId === id 
+                               ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
+                               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                           }`}
+                         >
+                           {tool.name}
+                         </button>
+                       ))}
                     </div>
-                );
+                  </div>
+               );
+            })}
+          </div>
+        </aside>
 
-                // Default
-                if(activeTool.component === 'img-resize') return <ImageResizer />;
-                if(activeTool.component === 'favicon') return <FaviconGen />;
+        {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-                return (
-                    <div className="flex flex-col lg:flex-row gap-4 h-[500px]">
-                        <div className="flex-1 flex flex-col">
-                            <div className="mb-2 flex justify-between items-center">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Input</span>
-                                {activeTool.type !== 'file' && (
-                                    <>
-                                        <input type="file" ref={fileRef} onChange={handleFileUpload} className="hidden" />
-                                        <button onClick={() => fileRef.current.click()} className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-md transition-colors"><Upload size={12}/> Upload</button>
-                                    </>
-                                )}
-                            </div>
-                            {activeTool.type === 'file' ? (
-                                <div className="flex-1 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                                    <input type="file" onChange={(e) => setImgFile(e.target.files[0])} className="p-4" />
-                                </div>
-                            ) : (
-                                <Editor value={input} onChange={setInput} placeholder="Paste content here..." />
-                            )}
-                        </div>
-                        <div className="flex lg:flex-col justify-center gap-2">
-                            <button onClick={handleRun} className="p-3 bg-indigo-600 text-white rounded-full shadow hover:bg-indigo-700"><ArrowRightLeft size={20}/></button>
-                            <button onClick={()=>{setInput('');setOutput('')}} className="p-3 bg-gray-200 dark:bg-gray-700 rounded-full"><Trash2 size={20}/></button>
-                        </div>
-                        <div className="flex-1 flex flex-col">
-                            <div className="mb-2 flex justify-between text-xs font-bold text-gray-500 uppercase"><span>Output</span><button onClick={()=>copyToClipboard(output)&&notify("Copied")} className="text-indigo-600 flex gap-1"><Copy size={12}/> Copy</button></div>
-                            <Editor value={output} readOnly placeholder="Result..." />
-                        </div>
+        {/* Main Workspace */}
+        <main className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+           <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+              <div className="max-w-6xl mx-auto h-full flex flex-col">
+                 <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        {activeTool.name}
+                      </h1>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {activeTool.desc || "Client-side processing. Your data never leaves this browser."}
+                      </p>
                     </div>
-                );
-            };
+                 </div>
 
-            return (
-                <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 font-sans`}>
-                    {notif && <div className="fixed top-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded shadow z-50 animate-bounce">{notif.msg}</div>}
-                    <nav className="h-16 bg-white dark:bg-gray-800 border-b dark:border-gray-700 flex items-center justify-between px-4 fixed w-full top-0 z-30">
-                        <div className="flex items-center gap-3">
-                            <button onClick={()=>setSbOpen(!sbOpen)} className="lg:hidden"><Menu/></button>
-                            <div>
-                                <span className="text-3xl font-light tracking-tight text-gray-900 dark:text-white font-silkscreen">Apex Utility Suite</span>
-                                <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5 ml-1">Vibe Coding Tools</span>
-                            </div>
-                        </div>
-                        <button onClick={()=>setIsDark(!isDark)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">{isDark?<Sun size={18}/>:<Moon size={18}/>}</button>
-                    </nav>
-                    <div className="flex pt-16 h-screen overflow-hidden">
-                        <aside className={`fixed lg:static z-20 w-72 bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col transform transition-transform ${sbOpen?'translate-x-0':'-translate-x-full lg:translate-x-0'} pt-4`}>
-                            <div className="px-4 mb-4"><div className="relative"><Search className="absolute left-2 top-2.5 text-gray-400" size={14}/><input className="w-full pl-8 pr-2 py-2 text-sm bg-gray-100 dark:bg-gray-900 border-none rounded" placeholder="Find tool..." value={search} onChange={e=>setSearch(e.target.value.toLowerCase())}/></div></div>
-                            <div className="flex-1 overflow-y-auto px-2 space-y-1 custom-scrollbar">
-                                {categories.map(cat => {
-                                    const cTools = Object.entries(tools).filter(([k,v])=>v.cat===cat.id && v.name.toLowerCase().includes(search));
-                                    if(!cTools.length) return null;
-                                    
-                                    const isOpen = cats[cat.id]; // Access state directly
+                 {error && (
+                   <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-900/50 flex items-center gap-2 text-sm font-medium">
+                     <AlertCircle size={18} /> {error}
+                   </div>
+                 )}
 
-                                    return (
-                                        <div key={cat.id}>
-                                            <button 
-                                                onClick={()=>setCats(p=>({...p,[cat.id]:!p[cat.id]}))} 
-                                                className="w-full flex justify-between items-center px-3 py-2 text-xs font-bold text-gray-500 uppercase hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
-                                            >
-                                                <div className="flex gap-2 items-center"><cat.icon size={14}/> {cat.name}</div>
-                                                {isOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-                                            </button>
-                                            
-                                            {isOpen && (
-                                                <div className="pl-3 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-700 ml-2 mb-2">
-                                                    {cTools.map(([id,t])=>(
-                                                        <button 
-                                                            key={id} 
-                                                            onClick={()=>{setActiveToolId(id);setSbOpen(false);setInput('');setOutput('');}} 
-                                                            className={`w-full text-left px-3 py-1.5 text-sm rounded transition-colors ${activeToolId===id?'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 font-medium':'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                                                        >
-                                                            {t.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                            <div className="p-4 text-center border-t dark:border-gray-700 text-[10px] text-gray-400">&copy; 2025 Apex Innovate LLC, UAE<br/>Registered Copyrighted</div>
-                        </aside>
-                        {sbOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={()=>setSbOpen(false)}></div>}
-                        <main className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900">
-                            <div className="flex-1 overflow-y-auto p-4 lg:p-8">
-                                <div className="max-w-5xl mx-auto h-full flex flex-col">
-                                    <div className="mb-6">
-                                        <h1 className="text-2xl font-bold dark:text-white">{activeTool.name}</h1>
-                                        <p className="text-sm text-gray-500 mt-1">{activeTool.desc}</p>
-                                    </div>
-                                    {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm flex gap-2 items-center"><AlertCircle size={16}/> {error}</div>}
-                                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow border dark:border-gray-700 flex flex-col overflow-hidden p-4 lg:p-6">
-                                        {renderContent()}
-                                    </div>
-                                </div>
-                            </div>
-                        </main>
+                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
+                    <div className="p-4 lg:p-6 flex-1 overflow-hidden">
+                       {renderContent()}
                     </div>
-                </div>
-            );
-        };
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                 </div>
+              </div>
+           </div>
+        </main>
+      </div>
+    </div>
+  );
+}
