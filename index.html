@@ -5,130 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apex Utility Suite</title>
     
-    <!-- 1. Tailwind CSS (Load first for styling) -->
+    <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
-                        mono: ['Consolas', 'Monaco', 'Courier New', 'monospace'],
-                    }
-                }
-            }
-        }
+      tailwind.config = {
+        darkMode: 'class',
+        theme: { extend: {} }
+      }
     </script>
-    
-    <!-- 2. React & ReactDOM (Development builds for UMD compatibility - Points 1 & 4) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
-    <!-- 3. Babel (For JSX compilation - Point 2) -->
+
+    <!-- 2. Logic Engines (Loaded globally) -->
+    <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-html.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-postcss.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-sql.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- 3. React & Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 4. Lucide React Icons (Stable UMD Version 0.263.1 - Point 4) -->
-    <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.min.js"></script>
+    <!-- 4. Import Map to make 'import' work in browser -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+      }
+    }
+    </script>
 
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(107, 114, 128, 0.8); }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.3s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #374151; }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 text-slate-900 dark:text-slate-100 h-screen w-screen overflow-hidden">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div id="root"></div>
 
-    <div id="root" class="h-full w-full"></div>
-
-    <!-- Your Custom Script (Must be last - Point 2) -->
-    <script type="text/babel">
-        // --- GLOBALS & SAFE IMPORTS ---
-        const { useState, useEffect, useRef } = React;
-        
-        // POINT 5 & 6: Safe Global Namespace & Crash Prevention
-        // We create a proxy to handle missing icons gracefully.
-        const LucideGlobal = window.lucideReact || {};
-        
-        const SafeIcon = (props) => (
-            <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-        );
-
-        // Helper to get icon or fallback
-        const getIcon = (name) => {
-            if (LucideGlobal[name]) return LucideGlobal[name];
-            console.warn(`Icon "${name}" not found in lucide-react. Using fallback.`);
-            return SafeIcon;
-        };
-
-        // Destructure icons using the safe helper
-        // This ensures the app NEVER crashes even if an icon is missing (Point 6)
-        const Code = getIcon('Code');
-        const FileJson = getIcon('FileJson');
-        const FileType = getIcon('FileType');
-        const CheckCircle = getIcon('CheckCircle');
-        const AlertCircle = getIcon('AlertCircle');
-        const Copy = getIcon('Copy');
-        const Trash2 = getIcon('Trash2');
-        const Maximize2 = getIcon('Maximize2');
-        const Moon = getIcon('Moon');
-        const Sun = getIcon('Sun');
-        const Menu = getIcon('Menu');
-        const ArrowRightLeft = getIcon('ArrowRightLeft');
-        const Play = getIcon('Play');
-        const ShieldCheck = getIcon('ShieldCheck');
-        const Search = getIcon('Search');
-        const Hash = getIcon('Hash');
-        const ImageIcon = getIcon('Image'); // Alias Image
-        const Database = getIcon('Database');
-        const Globe = getIcon('Globe');
-        const Cpu = getIcon('Cpu');
-        const Wrench = getIcon('Wrench');
-        const Lock = getIcon('Lock');
-        const Type = getIcon('Type');
-        const List = getIcon('List');
-        const Monitor = getIcon('Monitor');
-        const Split = getIcon('Split');
-        const Zap = getIcon('Zap');
-        const Upload = getIcon('Upload');
-        const FileSpreadsheet = getIcon('FileSpreadsheet');
-
-
-        /**
-         * APEX UTILITY SUITE
-         */
+    <!-- 5. YOUR APP LOGIC -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
+          Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
+          Search, Hash, Image as ImageIcon, Database, Globe, Cpu, Wrench, 
+          Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet
+        } from 'lucide-react';
 
         // --- HOOKS & UTILS ---
 
+        // Preload external scripts hook (simplified since we load in head)
         const useExternalScripts = (urls) => {
-          const [loaded, setLoaded] = useState(false);
-          useEffect(() => {
-            let loadCount = 0;
-            const loadScript = (url) => {
-              if (document.querySelector(`script[src="${url}"]`)) {
-                loadCount++;
-                if (loadCount === urls.length) setLoaded(true);
-                return;
-              }
-              const script = document.createElement('script');
-              script.src = url;
-              script.async = true;
-              script.onload = () => {
-                loadCount++;
-                if (loadCount === urls.length) setLoaded(true);
-              };
-              document.body.appendChild(script);
-            };
-            urls.forEach(loadScript);
-          }, [urls]);
+          const [loaded, setLoaded] = useState(true);
           return loaded;
         };
 
@@ -151,19 +87,19 @@
 
         const DataEngine = {
           csvToHtml: (csv) => {
-            if (!window.Papa) throw new Error("Engine Loading...");
+            if (!window.Papa) throw new Error("Loading...");
             const parsed = window.Papa.parse(csv, { header: true });
             if (parsed.errors.length && parsed.errors[0].message) throw new Error(parsed.errors[0].message);
             const headers = parsed.meta.fields || [];
-            let html = '<table class="w-full text-left border-collapse"><thead class="bg-gray-100 dark:bg-gray-700"><tr>';
-            headers.forEach(h => html += `<th class="p-2 border border-gray-200 dark:border-gray-600">${h}</th>`);
-            html += '</tr></thead><tbody>';
+            let html = '<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700">\n  <thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase">\n    <tr>';
+            headers.forEach(h => html += `<th class="px-4 py-2 border-b dark:border-gray-700">${h}</th>`);
+            html += '</tr>\n  </thead>\n  <tbody>\n';
             parsed.data.forEach(row => {
-              html += '<tr class="border-b dark:border-gray-700">';
-              headers.forEach(h => html += `<td class="p-2 border border-gray-200 dark:border-gray-600">${row[h] || ''}</td>`);
-              html += '</tr>';
+              html += '    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700">';
+              headers.forEach(h => html += `<td class="px-4 py-2">${row[h] || ''}</td>`);
+              html += '</tr>\n';
             });
-            return html + '</tbody></table>';
+            return html + '  </tbody>\n</table>';
           },
           csvToJson: (csv) => {
              if (!window.Papa) throw new Error("Engine Loading...");
@@ -188,9 +124,9 @@
             const arr = Array.isArray(json) ? json : [json];
             if (arr.length === 0) return "Empty Array";
             const headers = Object.keys(arr[0]);
-            let html = '<table class="w-full text-left border-collapse"><thead class="bg-gray-100 dark:bg-gray-700"><tr>' + headers.map(h => `<th class="p-2 border border-gray-200 dark:border-gray-600">${h}</th>`).join('') + '</tr></thead><tbody>';
+            let html = '<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700"><thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase"><tr>' + headers.map(h => `<th class="px-4 py-2 border-b dark:border-gray-700">${h}</th>`).join('') + '</tr></thead><tbody>';
             arr.forEach(row => {
-              html += '<tr class="border-b dark:border-gray-700">' + headers.map(h => `<td class="p-2 border border-gray-200 dark:border-gray-600">${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
+              html += '<tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700">' + headers.map(h => `<td class="px-4 py-2">${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
             });
             return html + '</tbody></table>';
           },
@@ -200,12 +136,12 @@
             if (xml.querySelector("parsererror")) throw new Error("Invalid XML Structure");
             
             const xmlToObj = (node) => {
-               if (node.nodeType === 3) return node.nodeValue.trim() || "";
+               if (node.nodeType === 3) return node.nodeValue.trim() || ""; 
                let obj = {};
                if (node.hasChildNodes()) {
                   for(let i = 0; i < node.childNodes.length; i++) {
                      const child = node.childNodes.item(i);
-                     if (child.nodeType === 3 && !child.nodeValue.trim()) continue;
+                     if (child.nodeType === 3 && !child.nodeValue.trim()) continue; 
                      const name = child.nodeName;
                      const val = xmlToObj(child);
                      if (obj[name]) {
@@ -225,7 +161,7 @@
           jsonToXml: (jsonStr) => {
              const obj = JSON.parse(jsonStr);
              const toXml = (v) => Object.entries(v).map(([k, val]) => {
-                const tag = k.replace(/[^a-zA-Z0-9\-_]/g, '_');
+                const tag = k.replace(/[^a-zA-Z0-9\-_]/g, '_'); 
                 return `<${tag}>${typeof val === 'object' && val !== null ? toXml(val) : val}</${tag}>`;
              }).join('');
              return `<?xml version="1.0" encoding="UTF-8"?>\n<root>${toXml(obj)}</root>`;
@@ -313,12 +249,12 @@
             const diff = window.Diff.diffLines(oldText, newText);
             const html = diff.map(part => {
               const color = part.added ? 'bg-green-100 dark:bg-green-900/30' : part.removed ? 'bg-red-100 dark:bg-red-900/30' : '';
-              return `<div class="${color} px-2 whitespace-pre-wrap font-mono text-sm">${part.value}</div>`;
+              return `<span class="${color}">${part.value}</span>`;
             }).join('');
             setDiffHtml(html);
           }, [oldText, newText]);
 
-          return <div className="h-full overflow-auto border rounded-lg p-2 bg-white dark:bg-gray-800" dangerouslySetInnerHTML={{__html: diffHtml}} />;
+          return <div className="h-full overflow-auto border rounded-lg p-4 bg-white dark:bg-gray-800 font-mono text-sm whitespace-pre-wrap" dangerouslySetInnerHTML={{__html: diffHtml}} />;
         };
 
         const ColorExplorer = ({ color, setColor }) => (
@@ -339,9 +275,8 @@
           </div>
         );
 
-        // --- MAIN APP ---
-
-        function App() {
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
           const [activeToolId, setActiveToolId] = useState('json-fmt');
           const [input, setInput] = useState('');
           const [input2, setInput2] = useState(''); 
@@ -355,7 +290,7 @@
           const [color, setColor] = useState('#4f46e5');
           const fileInputRef = useRef(null);
 
-          // Load All Engines
+          // Load All Engines including SheetJS for Excel
           const scriptsLoaded = useExternalScripts([
             "https://unpkg.com/prettier@2.8.8/standalone.js",
             "https://unpkg.com/prettier@2.8.8/parser-html.js",
@@ -395,11 +330,13 @@
                   const workbook = window.XLSX.read(data, { type: 'binary' });
                   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                   
+                  // Intelligent format selection based on current tool
                   if (activeToolId.includes('json')) {
                      const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
                      setInput(JSON.stringify(jsonData, null, 2));
                      notify("Excel parsed to JSON");
                   } else {
+                     // Default to CSV
                      const csvData = window.XLSX.utils.sheet_to_csv(firstSheet);
                      setInput(csvData);
                      notify("Excel parsed to CSV");
@@ -412,7 +349,7 @@
               return;
             }
 
-            // Default Text Logic
+            // Default Text Logic (CSV, JSON, TXT, XML, Code)
             const reader = new FileReader();
             reader.onload = (evt) => {
               setInput(evt.target.result);
@@ -424,6 +361,7 @@
           // --- TOOL REGISTRY ---
 
           const tools = {
+            // 1. DATA
             'csv-html': { cat: 'data', name: 'CSV to HTML', run: (i) => DataEngine.csvToHtml(i) },
             'csv-json': { cat: 'data', name: 'CSV to JSON', run: (i) => DataEngine.csvToJson(i) },
             'csv-tsv':  { cat: 'data', name: 'CSV to TSV', run: (i) => DataEngine.csvToTsv(i) },
@@ -437,6 +375,7 @@
             'xml-tsv':  { cat: 'data', name: 'XML to TSV', run: (i) => DataEngine.jsonToTsv(DataEngine.xmlToJson(i)) },
             'xml-html': { cat: 'data', name: 'XML to HTML', run: (i) => DataEngine.jsonToHtml(DataEngine.xmlToJson(i)) },
 
+            // 2. FILES
             'file-b64': { cat: 'file', name: 'File to Base64', type: 'file', run: async (f) => new Promise(r => {
                 const reader = new FileReader();
                 reader.onload = () => r(reader.result);
@@ -444,6 +383,7 @@
             })},
             'b64-file': { cat: 'file', name: 'Base64 to File', desc: 'Decodes Base64 to Blob (Download)', type: 'custom', component: 'b64dl' },
 
+            // 3. DEV TOOLS
             'diff':      { cat: 'dev', name: 'Diff Check', type: 'custom', component: 'diff' },
             'regex':     { cat: 'dev', name: 'RegEx Tester', type: 'custom', component: 'regex' },
             'color':     { cat: 'dev', name: 'Color Converter', type: 'custom', component: 'color' },
@@ -451,6 +391,7 @@
             'speed':     { cat: 'dev', name: 'Speed Test', type: 'custom', component: 'speed' },
             'htaccess':  { cat: 'dev', name: '.htaccess Gen', run: () => "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php?/$1 [L]" },
 
+            // 4. CRYPTO
             'sha1':      { cat: 'crypto', name: 'SHA-1', run: (i) => CryptoEngine.hash(i, 'SHA1') },
             'md5':       { cat: 'crypto', name: 'MD5', run: (i) => CryptoEngine.hash(i, 'MD5') },
             'sha256':    { cat: 'crypto', name: 'SHA-256', run: (i) => CryptoEngine.hash(i, 'SHA256') },
@@ -460,6 +401,7 @@
             'url-enc':   { cat: 'crypto', name: 'URL Encode', run: (i) => encodeURIComponent(i) },
             'url-dec':   { cat: 'crypto', name: 'URL Decode', run: (i) => decodeURIComponent(i) },
 
+            // 5. FORMATTING
             'json-fmt':  { cat: 'format', name: 'JSON Format', run: (i) => window.prettier.format(i, { parser: 'json', plugins: window.prettierPlugins }) },
             'js-fmt':    { cat: 'format', name: 'JS Format', run: (i) => window.prettier.format(i, { parser: 'babel', plugins: window.prettierPlugins }) },
             'css-fmt':   { cat: 'format', name: 'CSS Format', run: (i) => window.prettier.format(i, { parser: 'css', plugins: window.prettierPlugins }) },
@@ -467,17 +409,21 @@
             'sql-fmt':   { cat: 'format', name: 'SQL Format', run: (i) => i.replace(/\s+/g,' ').replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|INSERT|UPDATE|DELETE)\b/gi, '\n$1').trim() },
             'py-fmt':    { cat: 'format', name: 'Python Indent', run: (i) => i.replace(/:\s*$/gm, ':\n    ') }, 
 
+            // 6. IMAGE
             'img-resize': { cat: 'image', name: 'Image Resizer', type: 'custom', component: 'img-resize' },
             'favicon':    { cat: 'image', name: 'Favicon Gen', type: 'custom', component: 'favicon' },
 
+            // 7. MINIFY
             'json-min':   { cat: 'minify', name: 'JSON Minify', run: (i) => JSON.stringify(JSON.parse(i)) },
             'css-min':    { cat: 'minify', name: 'CSS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s+/g," ").replace(/ ?([:;{}]) ?/g,"$1").trim() },
             'js-min':     { cat: 'minify', name: 'JS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").split('\n').map(l=>l.trim()).join(' ') },
 
+            // 8. NET
             'ip':         { cat: 'net', name: 'My IP', type: 'custom', component: 'ip' },
             'router':     { cat: 'net', name: 'Router Pass', type: 'custom', component: 'router' },
             'email-val':  { cat: 'net', name: 'Email Valid', run: (i) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i) ? "Valid Email" : "Invalid Email" },
 
+            // 9. NUMBER
             'bin-dec':    { cat: 'number', name: 'Bin to Dec', run: (i) => NumberEngine.convert(i, 2, 10) },
             'bin-hex':    { cat: 'number', name: 'Bin to Hex', run: (i) => NumberEngine.convert(i, 2, 16) },
             'bin-oct':    { cat: 'number', name: 'Bin to Oct', run: (i) => NumberEngine.convert(i, 2, 8) },
@@ -490,13 +436,15 @@
             'unit-cf':    { cat: 'number', name: '°C to °F', run: (i) => NumberEngine.unit(i, 'c-f') },
             'unit-bytes': { cat: 'number', name: 'Data Size', run: (i) => NumberEngine.dataSize(i) },
 
+            // 10. SEO
             'keyword':    { cat: 'seo', name: 'Keyword Gen', run: (i) => {
-               const words = i.split(',');
-               let res = [];
-               words.forEach(w1 => words.forEach(w2 => { if(w1!==w2) res.push(`${w1.trim()} ${w2.trim()}`)}));
-               return res.join('\n');
+              const words = i.split(',');
+              let res = [];
+              words.forEach(w1 => words.forEach(w2 => { if(w1!==w2) res.push(`${w1.trim()} ${w2.trim()}`)}));
+              return res.join('\n');
             }},
 
+            // 11. STRING
             'word-cnt':   { cat: 'string', name: 'Word Count', run: (i) => `Words: ${i.trim().split(/\s+/).length}\nChars: ${i.length}\nLines: ${i.split('\n').length}` },
             'str-rev':    { cat: 'string', name: 'Reverse', run: (i) => i.split('').reverse().join('') },
             'str-hex':    { cat: 'string', name: 'Text to Hex', run: (i) => StringEngine.textToHex(i) },
@@ -543,30 +491,32 @@
           };
 
           const renderContent = () => {
+            // 1. DIFF
             if (activeTool.component === 'diff') {
-               return (
-                 <div className="h-full flex flex-col gap-2">
-                   <div className="flex gap-2 h-1/3">
+              return (
+                <div className="h-full flex flex-col gap-2">
+                  <div className="flex gap-2 h-1/3">
                       <Editor value={input} onChange={setInput} placeholder="Original Text" />
                       <Editor value={input2} onChange={setInput2} placeholder="New Text" />
-                   </div>
-                   <div className="flex-1 border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+                  </div>
+                  <div className="flex-1 border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
                       <DiffViewer oldText={input} newText={input2} />
-                   </div>
-                 </div>
-               );
+                  </div>
+                </div>
+              );
             }
 
+            // 2. IMAGE RESIZE / FAVICON
             if (activeTool.component === 'img-resize' || activeTool.component === 'favicon') {
               return (
                 <div className="h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-8">
-                   <input type="file" accept="image/*" onChange={(e) => {
-                     const f = e.target.files[0];
-                     if(f) {
+                  <input type="file" accept="image/*" onChange={(e) => {
+                    const f = e.target.files[0];
+                    if(f) {
                         const reader = new FileReader();
                         reader.onload = (ev) => {
-                           const img = new Image();
-                           img.onload = () => {
+                          const img = new Image();
+                          img.onload = () => {
                               const size = activeTool.component === 'favicon' ? 32 : (img.width / 2);
                               const canvas = document.createElement('canvas');
                               canvas.width = size;
@@ -574,118 +524,123 @@
                               const ctx = canvas.getContext('2d');
                               ctx.drawImage(img, 0, 0, size, size);
                               setOutput(canvas.toDataURL());
-                           };
-                           img.src = ev.target.result;
+                          };
+                          img.src = ev.target.result;
                         }
                         reader.readAsDataURL(f);
-                     }
-                   }} />
-                   <p className="mt-4 text-gray-500">{activeTool.component === 'favicon' ? "Generates 32x32 Favicon" : "Resizes to 50% width"}</p>
-                   {output && <img src={output} className="mt-4 border shadow-lg max-h-64" alt="Result" />}
-                   {output && <a href={output} download="processed.png" className="mt-2 text-indigo-600 underline">Download</a>}
+                    }
+                  }} />
+                  <p className="mt-4 text-gray-500">{activeTool.component === 'favicon' ? "Generates 32x32 Favicon" : "Resizes to 50% width"}</p>
+                  {output && <img src={output} className="mt-4 border shadow-lg max-h-64" alt="Result" />}
+                  {output && <a href={output} download="processed.png" className="mt-2 text-indigo-600 underline">Download</a>}
                 </div>
               );
             }
 
+            // 3. COLOR
             if (activeTool.component === 'color') {
               return <ColorExplorer color={color} setColor={setColor} />;
             }
 
+            // 4. SPEED TEST
             if (activeTool.component === 'speed') {
-               return (
-                 <div className="flex flex-col items-center justify-center h-full gap-4">
+              return (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
                     <button onClick={async () => {
-                       setOutput("Testing...");
-                       const start = Date.now();
-                       try {
-                         await fetch('https://unpkg.com/react@18/umd/react.production.min.js?t='+start); 
-                         const duration = Date.now() - start;
-                         setOutput(`Latency: ${duration}ms\n(Estimated via CDN fetch)`);
-                       } catch(e) { setOutput("Connection Failed"); }
+                      setOutput("Testing...");
+                      const start = Date.now();
+                      try {
+                        await fetch('https://unpkg.com/react@18/umd/react.production.min.js?t='+start); 
+                        const duration = Date.now() - start;
+                        setOutput(`Latency: ${duration}ms\n(Estimated via CDN fetch)`);
+                      } catch(e) { setOutput("Connection Failed"); }
                     }} className="px-8 py-4 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 font-bold text-lg">Start Speed Test</button>
                     <pre className="text-2xl font-mono">{output}</pre>
-                 </div>
-               );
+                </div>
+              );
             }
 
+            // 5. IP
             if (activeTool.component === 'ip') {
-               return (
-                 <div className="flex flex-col items-center justify-center h-full gap-4">
-                   <button onClick={() => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>setOutput(d.ip))} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Check My IP</button>
-                   <div className="text-4xl font-mono text-gray-800 dark:text-white">{output}</div>
-                 </div>
-               );
+              return (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <button onClick={() => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>setOutput(d.ip))} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Check My IP</button>
+                  <div className="text-4xl font-mono text-gray-800 dark:text-white">{output}</div>
+                </div>
+              );
             }
 
+            // 6. ROUTER
             if (activeTool.component === 'router') {
               return (
                 <div className="h-full overflow-auto">
                   <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                     <thead className="bg-gray-100 dark:bg-gray-700 uppercase"><tr><th className="px-4 py-3">Brand</th><th>User</th><th>Pass</th></tr></thead>
-                     <tbody>
-                       {[
-                         ['Linksys','admin','admin'],['Netgear','admin','password'],['D-Link','admin','(blank)'],
-                         ['TP-Link','admin','admin'],['Cisco','cisco','cisco'],['Asus','admin','admin']
-                       ].map(([b,u,p], i) => (
-                         <tr key={i} className="border-b dark:border-gray-700"><td className="px-4 py-2 font-bold">{b}</td><td>{u}</td><td>{p}</td></tr>
-                       ))}
-                     </tbody>
+                    <thead className="bg-gray-100 dark:bg-gray-700 uppercase"><tr><th className="px-4 py-3">Brand</th><th>User</th><th>Pass</th></tr></thead>
+                    <tbody>
+                      {[
+                        ['Linksys','admin','admin'],['Netgear','admin','password'],['D-Link','admin','(blank)'],
+                        ['TP-Link','admin','admin'],['Cisco','cisco','cisco'],['Asus','admin','admin']
+                      ].map(([b,u,p], i) => (
+                        <tr key={i} className="border-b dark:border-gray-700"><td className="px-4 py-2 font-bold">{b}</td><td>{u}</td><td>{p}</td></tr>
+                      ))}
+                    </tbody>
                   </table>
                 </div>
               );
             }
 
+            // DEFAULT 2-PANE LAYOUT
             return (
               <div className="flex flex-col lg:flex-row gap-4 h-[500px] lg:h-[600px]">
                 <div className="flex-1 flex flex-col">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
-                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Input</label>
-                       {activeTool.type !== 'file' && (
-                         <>
-                           <input 
-                             type="file" 
-                             ref={fileInputRef} 
-                             onChange={handleFileUpload} 
-                             className="hidden" 
-                             accept=".txt,.csv,.json,.xml,.js,.html,.css,.sql,.xlsx,.xls,.md"
-                           />
-                           <button 
-                             onClick={() => fileInputRef.current.click()} 
-                             className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-md transition-colors"
-                             title="Upload CSV, JSON, Excel, TXT"
-                           >
-                             <Upload size={12} /> Upload File
-                           </button>
-                         </>
-                       )}
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Input</label>
+                      {activeTool.type !== 'file' && (
+                        <>
+                          <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileUpload} 
+                            className="hidden" 
+                            accept=".txt,.csv,.json,.xml,.js,.html,.css,.sql,.xlsx,.xls,.md"
+                          />
+                          <button 
+                            onClick={() => fileInputRef.current.click()} 
+                            className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-md transition-colors"
+                            title="Upload CSV, JSON, Excel, TXT"
+                          >
+                            <Upload size={12} /> Upload File
+                          </button>
+                        </>
+                      )}
                     </div>
                     {activeTool.type === 'file' && <span className="text-xs text-indigo-600">File Mode</span>}
                   </div>
                   {activeTool.type === 'file' ? (
-                     <div className="flex-1 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                    <div className="flex-1 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                         <input type="file" onChange={(e) => setImageFile(e.target.files[0])} className="p-4" />
-                     </div>
+                    </div>
                   ) : (
-                     <Editor value={input} onChange={setInput} placeholder="Paste content or upload a file (Excel, CSV, JSON, TXT)..." />
+                    <Editor value={input} onChange={setInput} placeholder="Paste content or upload a file (Excel, CSV, JSON, TXT)..." />
                   )}
                 </div>
 
                 <div className="flex lg:flex-col justify-center gap-2 py-2 lg:py-0">
-                   <button onClick={handleRun} className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all active:scale-90" title="Execute">
-                     <ArrowRightLeft className="lg:rotate-0 rotate-90" />
-                   </button>
-                   <button onClick={()=>{setInput(''); setOutput(''); setInput2(''); setImageFile(null)}} className="p-3 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all" title="Clear">
-                     <Trash2 size={20} />
-                   </button>
+                  <button onClick={handleRun} className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all active:scale-90" title="Execute">
+                    <ArrowRightLeft className="lg:rotate-0 rotate-90" />
+                  </button>
+                  <button onClick={()=>{setInput(''); setOutput(''); setInput2(''); setImageFile(null)}} className="p-3 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all" title="Clear">
+                    <Trash2 size={20} />
+                  </button>
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                   <div className="flex justify-between items-center mb-2">
-                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Result</label>
-                     <button onClick={()=>copyToClipboard(output) && notify("Copied!")} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline"><Copy size={12}/> Copy</button>
-                   </div>
-                   <Editor value={output} readOnly placeholder="Output will appear here..." />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Result</label>
+                    <button onClick={()=>copyToClipboard(output) && notify("Copied!")} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline"><Copy size={12}/> Copy</button>
+                  </div>
+                  <Editor value={output} readOnly placeholder="Output will appear here..." />
                 </div>
               </div>
             );
@@ -694,6 +649,7 @@
           return (
             <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-200 ${isDark ? 'dark' : ''}`}>
               
+              {/* Notifications */}
               {notification && (
                 <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-top-5 ${
                   notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white'
@@ -703,6 +659,7 @@
                 </div>
               )}
 
+              {/* Navbar */}
               <nav className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 fixed w-full top-0 z-30 shadow-sm">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500"><Menu /></button>
@@ -710,24 +667,25 @@
                     <Zap className="text-white" size={24} fill="currentColor" />
                   </div>
                   <div>
-                     <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">Apex Utility Suite</span>
-                     <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5">Vibe Coding Tools</span>
+                    <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">Apex Utility Suite</span>
+                    <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5">Vibe Coding Tools</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                   <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-100 dark:border-green-900/30">
+                  <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-100 dark:border-green-900/30">
                       <ShieldCheck size={14} /> <span>Privacy Active</span>
-                   </div>
-                   <button onClick={() => setIsDark(!isDark)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-                     {isDark ? <Sun size={20} /> : <Moon size={20} />}
-                   </button>
+                  </div>
+                  <button onClick={() => setIsDark(!isDark)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                  </button>
                 </div>
               </nav>
 
               <div className="flex pt-16 h-screen overflow-hidden">
+                {/* Sidebar */}
                 <aside className={`fixed lg:static inset-y-0 left-0 z-20 w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} pt-16 lg:pt-0`}>
                   <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                     <div className="relative">
+                    <div className="relative">
                         <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                         <input 
                           type="text" 
@@ -736,44 +694,45 @@
                           value={search}
                           onChange={(e) => setSearch(e.target.value.toLowerCase())}
                         />
-                     </div>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-6 pt-4 custom-scrollbar">
                     {categories.map(cat => {
-                       const catTools = Object.entries(tools).filter(([id, t]) => t.cat === cat.id && t.name.toLowerCase().includes(search));
-                       if (catTools.length === 0) return null;
-                       return (
+                      const catTools = Object.entries(tools).filter(([id, t]) => t.cat === cat.id && t.name.toLowerCase().includes(search));
+                      if (catTools.length === 0) return null;
+                      return (
                           <div key={cat.id}>
                             <div className="px-3 mb-2 flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
                               <cat.icon size={14} /> {cat.name}
                             </div>
                             <div className="space-y-0.5">
-                               {catTools.map(([id, tool]) => (
-                                 <button
-                                   key={id}
-                                   onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
-                                   className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                                     activeToolId === id 
-                                       ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
-                                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                   }`}
-                                 >
-                                   {tool.name}
-                                 </button>
-                               ))}
+                              {catTools.map(([id, tool]) => (
+                                <button
+                                  key={id}
+                                  onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
+                                  className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                                    activeToolId === id 
+                                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
+                                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                  }`}
+                                >
+                                  {tool.name}
+                                </button>
+                              ))}
                             </div>
                           </div>
-                       );
+                      );
                     })}
                   </div>
                 </aside>
 
                 {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
+                {/* Main Workspace */}
                 <main className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-                   <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+                  <div className="flex-1 overflow-y-auto p-4 lg:p-8">
                       <div className="max-w-6xl mx-auto h-full flex flex-col">
-                         <div className="mb-6 flex items-center justify-between">
+                        <div className="mb-6 flex items-center justify-between">
                             <div>
                               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 {activeTool.name}
@@ -782,29 +741,28 @@
                                 {activeTool.desc || "Client-side processing. Your data never leaves this browser."}
                               </p>
                             </div>
-                         </div>
+                        </div>
 
-                         {error && (
-                           <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-900/50 flex items-center gap-2 text-sm font-medium">
-                             <AlertCircle size={18} /> {error}
-                           </div>
-                         )}
+                        {error && (
+                          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-900/50 flex items-center gap-2 text-sm font-medium">
+                            <AlertCircle size={18} /> {error}
+                          </div>
+                        )}
 
-                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
                             <div className="p-4 lg:p-6 flex-1 overflow-hidden">
-                               {renderContent()}
+                              {renderContent()}
                             </div>
-                         </div>
+                        </div>
                       </div>
-                   </div>
+                  </div>
                 </main>
               </div>
             </div>
           );
-        }
+        };
 
-        // --- RENDER ---
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        const root = createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
