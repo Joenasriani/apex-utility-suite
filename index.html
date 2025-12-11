@@ -1,0 +1,741 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
+  Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
+  Search, Hash, Image as ImageIcon, Database, Globe, Cpu, Wrench, 
+  Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet
+} from 'lucide-react';
+
+/**
+ * APEX UTILITY SUITE
+ * Precision-engineered client-side tools.
+ * * CORE LIBRARIES LOADED:
+ * - Prettier (Formatting)
+ * - CryptoJS (Hashing)
+ * - PapaParse (CSV Parsing)
+ * - Diff (Text Comparison)
+ * - SheetJS (Excel Parsing)
+ */
+
+// --- HOOKS & UTILS ---
+
+const useExternalScripts = (urls) => {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let loadCount = 0;
+    const loadScript = (url) => {
+      if (document.querySelector(`script[src="${url}"]`)) {
+        loadCount++;
+        if (loadCount === urls.length) setLoaded(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      script.onload = () => {
+        loadCount++;
+        if (loadCount === urls.length) setLoaded(true);
+      };
+      document.body.appendChild(script);
+    };
+    urls.forEach(loadScript);
+  }, [urls]);
+  return loaded;
+};
+
+const copyToClipboard = (text) => {
+  if (!text) return false;
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("Copy");
+    textArea.remove();
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+// --- LOGIC ENGINES ---
+
+const DataEngine = {
+  csvToHtml: (csv) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    const parsed = window.Papa.parse(csv, { header: true });
+    if (parsed.errors.length) throw new Error(parsed.errors[0].message);
+    const headers = parsed.meta.fields || [];
+    let html = '<table class="table">\n  <thead>\n    <tr>';
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr>\n  </thead>\n  <tbody>\n';
+    parsed.data.forEach(row => {
+      html += '    <tr>';
+      headers.forEach(h => html += `<td>${row[h] || ''}</td>`);
+      html += '</tr>\n';
+    });
+    return html + '  </tbody>\n</table>';
+  },
+  csvToJson: (csv) => {
+     if (!window.Papa) throw new Error("Engine Loading...");
+     const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
+     return JSON.stringify(result.data, null, 2);
+  },
+  csvToTsv: (csv) => {
+     if (!window.Papa) throw new Error("Engine Loading...");
+     const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
+     return window.Papa.unparse(result.data, { delimiter: "\t" });
+  },
+  jsonToCsv: (json) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    return window.Papa.unparse(JSON.parse(json));
+  },
+  jsonToTsv: (json) => {
+    if (!window.Papa) throw new Error("Engine Loading...");
+    return window.Papa.unparse(JSON.parse(json), { delimiter: "\t" });
+  },
+  jsonToHtml: (jsonStr) => {
+    const json = JSON.parse(jsonStr);
+    const arr = Array.isArray(json) ? json : [json];
+    if (arr.length === 0) return "Empty Array";
+    const headers = Object.keys(arr[0]);
+    let html = '<table><thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+    arr.forEach(row => {
+      html += '<tr>' + headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
+    });
+    return html + '</tbody></table>';
+  },
+  xmlToJson: (xmlStr) => {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlStr, "text/xml");
+    if (xml.querySelector("parsererror")) throw new Error("Invalid XML Structure");
+    
+    // Recursive XML to JSON
+    const xmlToObj = (node) => {
+       if (node.nodeType === 3) return node.nodeValue.trim() || ""; // Text
+       let obj = {};
+       if (node.hasChildNodes()) {
+          for(let i = 0; i < node.childNodes.length; i++) {
+             const child = node.childNodes.item(i);
+             if (child.nodeType === 3 && !child.nodeValue.trim()) continue; // Skip empty whitespace
+             const name = child.nodeName;
+             const val = xmlToObj(child);
+             if (obj[name]) {
+                if (!Array.isArray(obj[name])) obj[name] = [obj[name]];
+                obj[name].push(val);
+             } else {
+                obj[name] = val;
+             }
+          }
+       }
+       // If object is basically empty but has a text value, return strict text
+       if (Object.keys(obj).length === 1 && obj["#text"]) return obj["#text"];
+       if (Object.keys(obj).length === 0) return "";
+       return obj;
+    };
+    return JSON.stringify(xmlToObj(xml.documentElement), null, 2);
+  },
+  jsonToXml: (jsonStr) => {
+     const obj = JSON.parse(jsonStr);
+     const toXml = (v) => Object.entries(v).map(([k, val]) => {
+        const tag = k.replace(/[^a-zA-Z0-9\-_]/g, '_'); // Sanitize tags
+        return `<${tag}>${typeof val === 'object' && val !== null ? toXml(val) : val}</${tag}>`;
+     }).join('');
+     return `<?xml version="1.0" encoding="UTF-8"?>\n<root>${toXml(obj)}</root>`;
+  }
+};
+
+const CryptoEngine = {
+  hash: (text, algo) => {
+    if (!window.CryptoJS) throw new Error("Crypto Engine Loading...");
+    return window.CryptoJS[algo](text).toString();
+  }
+};
+
+const NumberEngine = {
+  convert: (val, from, to) => {
+    const i = parseInt(val, from);
+    if (isNaN(i)) throw new Error(`Invalid base-${from} number`);
+    return i.toString(to).toUpperCase();
+  },
+  unit: (val, type) => {
+    const n = parseFloat(val);
+    if (isNaN(n)) throw new Error("Invalid Number");
+    if (type === 'c-f') return (n * 9/5) + 32;
+    if (type === 'f-c') return (n - 32) * 5/9;
+    if (type === 'kg-lb') return n * 2.20462;
+    if (type === 'lb-kg') return n / 2.20462;
+    if (type === 'm-ft') return n * 3.28084;
+    return n;
+  },
+  dataSize: (bytes) => {
+    const b = parseInt(bytes);
+    if (isNaN(b)) return "Invalid";
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    if (b === 0) return '0 Byte';
+    const i = parseInt(Math.floor(Math.log(b) / Math.log(1024)));
+    return Math.round(b / Math.pow(1024, i), 2) + ' ' + sizes[i];
+  }
+};
+
+const StringEngine = {
+  stripTags: (html) => {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  },
+  escapeHtml: (text) => {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  },
+  textToHex: (str) => {
+    let hex = '';
+    for(let i=0;i<str.length;i++) hex += ''+str.charCodeAt(i).toString(16);
+    return hex;
+  },
+  hexToText: (hex) => {
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    return str;
+  }
+};
+
+// --- COMPONENT RENDERERS ---
+
+const Editor = ({ value, onChange, readOnly, placeholder }) => (
+  <textarea
+    className={`w-full h-full p-4 font-mono text-sm resize-none focus:outline-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border rounded-lg ${
+      readOnly ? 'bg-gray-50 dark:bg-gray-900 text-gray-500' : 'border-gray-300 dark:border-gray-600 focus:border-indigo-500'
+    }`}
+    value={value}
+    onChange={(e) => onChange && onChange(e.target.value)}
+    readOnly={readOnly}
+    placeholder={placeholder}
+    spellCheck="false"
+  />
+);
+
+const DiffViewer = ({ oldText, newText }) => {
+  const [diffHtml, setDiffHtml] = useState('');
+  
+  useEffect(() => {
+    if (!window.Diff) {
+      setDiffHtml('Loading Diff Engine...');
+      return;
+    }
+    const diff = window.Diff.diffLines(oldText, newText);
+    const html = diff.map(part => {
+      const color = part.added ? 'bg-green-100 dark:bg-green-900/30' : part.removed ? 'bg-red-100 dark:bg-red-900/30' : '';
+      return `<div class="${color} px-2 whitespace-pre-wrap font-mono text-sm">${part.value}</div>`;
+    }).join('');
+    setDiffHtml(html);
+  }, [oldText, newText]);
+
+  return <div className="h-full overflow-auto border rounded-lg p-2 bg-white dark:bg-gray-800" dangerouslySetInnerHTML={{__html: diffHtml}} />;
+};
+
+const ColorExplorer = ({ color, setColor }) => (
+  <div className="flex flex-col gap-6 items-center justify-center h-full">
+    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-32 h-32 cursor-pointer border-4 border-gray-200 rounded-xl" />
+    <div className="grid grid-cols-2 gap-4 text-center">
+      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="text-xs text-gray-500 font-bold uppercase">HEX</div>
+        <div className="text-xl font-mono dark:text-white select-all">{color.toUpperCase()}</div>
+      </div>
+      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="text-xs text-gray-500 font-bold uppercase">RGB</div>
+        <div className="text-xl font-mono dark:text-white select-all">
+          {parseInt(color.slice(1, 3), 16)}, {parseInt(color.slice(3, 5), 16)}, {parseInt(color.slice(5, 7), 16)}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// --- MAIN APP ---
+
+export default function App() {
+  const [activeToolId, setActiveToolId] = useState('json-fmt');
+  const [input, setInput] = useState('');
+  const [input2, setInput2] = useState(''); 
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState('');
+  const [notification, setNotification] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [color, setColor] = useState('#4f46e5');
+  const fileInputRef = useRef(null);
+
+  // Load All Engines including SheetJS for Excel
+  const scriptsLoaded = useExternalScripts([
+    "https://unpkg.com/prettier@2.8.8/standalone.js",
+    "https://unpkg.com/prettier@2.8.8/parser-html.js",
+    "https://unpkg.com/prettier@2.8.8/parser-babel.js",
+    "https://unpkg.com/prettier@2.8.8/parser-postcss.js",
+    "https://unpkg.com/prettier@2.8.8/parser-sql.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
+  ]);
+
+  useEffect(() => {
+    if (isDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [isDark]);
+
+  const notify = (msg, type = 'success') => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Excel Logic
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      if (!window.XLSX) {
+        notify("Excel Engine Loading...", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = evt.target.result;
+          const workbook = window.XLSX.read(data, { type: 'binary' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          
+          // Intelligent format selection based on current tool
+          if (activeToolId.includes('json')) {
+             const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
+             setInput(JSON.stringify(jsonData, null, 2));
+             notify("Excel parsed to JSON");
+          } else {
+             // Default to CSV
+             const csvData = window.XLSX.utils.sheet_to_csv(firstSheet);
+             setInput(csvData);
+             notify("Excel parsed to CSV");
+          }
+        } catch (err) {
+          setError("Failed to parse Excel file");
+        }
+      };
+      reader.readAsBinaryString(file);
+      return;
+    }
+
+    // Default Text Logic (CSV, JSON, TXT, XML, Code)
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setInput(evt.target.result);
+      notify("File Loaded");
+    };
+    reader.readAsText(file);
+  };
+
+  // --- TOOL REGISTRY ---
+
+  const tools = {
+    // 1. DATA
+    'csv-html': { cat: 'data', name: 'CSV to HTML', run: (i) => DataEngine.csvToHtml(i) },
+    'csv-json': { cat: 'data', name: 'CSV to JSON', run: (i) => DataEngine.csvToJson(i) },
+    'csv-tsv':  { cat: 'data', name: 'CSV to TSV', run: (i) => DataEngine.csvToTsv(i) },
+    'csv-xml':  { cat: 'data', name: 'CSV to XML', run: (i) => DataEngine.jsonToXml(DataEngine.csvToJson(i)) },
+    'json-csv': { cat: 'data', name: 'JSON to CSV', run: (i) => DataEngine.jsonToCsv(i) },
+    'json-tsv': { cat: 'data', name: 'JSON to TSV', run: (i) => DataEngine.jsonToTsv(i) },
+    'json-xml': { cat: 'data', name: 'JSON to XML', run: (i) => DataEngine.jsonToXml(i) },
+    'json-html':{ cat: 'data', name: 'JSON to HTML', run: (i) => DataEngine.jsonToHtml(i) },
+    'xml-json': { cat: 'data', name: 'XML to JSON', run: (i) => DataEngine.xmlToJson(i) },
+    'xml-csv':  { cat: 'data', name: 'XML to CSV', run: (i) => DataEngine.jsonToCsv(DataEngine.xmlToJson(i)) },
+    'xml-tsv':  { cat: 'data', name: 'XML to TSV', run: (i) => DataEngine.jsonToTsv(DataEngine.xmlToJson(i)) },
+    'xml-html': { cat: 'data', name: 'XML to HTML', run: (i) => DataEngine.jsonToHtml(DataEngine.xmlToJson(i)) },
+
+    // 2. FILES
+    'file-b64': { cat: 'file', name: 'File to Base64', type: 'file', run: async (f) => new Promise(r => {
+        const reader = new FileReader();
+        reader.onload = () => r(reader.result);
+        reader.readAsDataURL(f);
+    })},
+    'b64-file': { cat: 'file', name: 'Base64 to File', desc: 'Decodes Base64 to Blob (Download)', type: 'custom', component: 'b64dl' },
+
+    // 3. DEV TOOLS
+    'diff':      { cat: 'dev', name: 'Diff Check', type: 'custom', component: 'diff' },
+    'regex':     { cat: 'dev', name: 'RegEx Tester', type: 'custom', component: 'regex' },
+    'color':     { cat: 'dev', name: 'Color Converter', type: 'custom', component: 'color' },
+    'timestamp': { cat: 'dev', name: 'Timestamp', type: 'custom', component: 'timestamp' },
+    'speed':     { cat: 'dev', name: 'Speed Test', type: 'custom', component: 'speed' },
+    'htaccess':  { cat: 'dev', name: '.htaccess Gen', run: () => "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php?/$1 [L]" },
+
+    // 4. CRYPTO
+    'sha1':      { cat: 'crypto', name: 'SHA-1', run: (i) => CryptoEngine.hash(i, 'SHA1') },
+    'md5':       { cat: 'crypto', name: 'MD5', run: (i) => CryptoEngine.hash(i, 'MD5') },
+    'sha256':    { cat: 'crypto', name: 'SHA-256', run: (i) => CryptoEngine.hash(i, 'SHA256') },
+    'sha512':    { cat: 'crypto', name: 'SHA-512', run: (i) => CryptoEngine.hash(i, 'SHA512') },
+    'b64-enc':   { cat: 'crypto', name: 'Base64 Encode', run: (i) => btoa(i) },
+    'b64-dec':   { cat: 'crypto', name: 'Base64 Decode', run: (i) => atob(i) },
+    'url-enc':   { cat: 'crypto', name: 'URL Encode', run: (i) => encodeURIComponent(i) },
+    'url-dec':   { cat: 'crypto', name: 'URL Decode', run: (i) => decodeURIComponent(i) },
+
+    // 5. FORMATTING
+    'json-fmt':  { cat: 'format', name: 'JSON Format', run: (i) => window.prettier.format(i, { parser: 'json', plugins: window.prettierPlugins }) },
+    'js-fmt':    { cat: 'format', name: 'JS Format', run: (i) => window.prettier.format(i, { parser: 'babel', plugins: window.prettierPlugins }) },
+    'css-fmt':   { cat: 'format', name: 'CSS Format', run: (i) => window.prettier.format(i, { parser: 'css', plugins: window.prettierPlugins }) },
+    'html-fmt':  { cat: 'format', name: 'HTML Format', run: (i) => window.prettier.format(i, { parser: 'html', plugins: window.prettierPlugins }) },
+    'sql-fmt':   { cat: 'format', name: 'SQL Format', run: (i) => i.replace(/\s+/g,' ').replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|INSERT|UPDATE|DELETE)\b/gi, '\n$1').trim() },
+    'py-fmt':    { cat: 'format', name: 'Python Indent', run: (i) => i.replace(/:\s*$/gm, ':\n    ') }, 
+
+    // 6. IMAGE
+    'img-resize': { cat: 'image', name: 'Image Resizer', type: 'custom', component: 'img-resize' },
+    'favicon':    { cat: 'image', name: 'Favicon Gen', type: 'custom', component: 'favicon' },
+
+    // 7. MINIFY
+    'json-min':   { cat: 'minify', name: 'JSON Minify', run: (i) => JSON.stringify(JSON.parse(i)) },
+    'css-min':    { cat: 'minify', name: 'CSS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s+/g," ").replace(/ ?([:;{}]) ?/g,"$1").trim() },
+    'js-min':     { cat: 'minify', name: 'JS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").split('\n').map(l=>l.trim()).join(' ') },
+
+    // 8. NET
+    'ip':         { cat: 'net', name: 'My IP', type: 'custom', component: 'ip' },
+    'router':     { cat: 'net', name: 'Router Pass', type: 'custom', component: 'router' },
+    'email-val':  { cat: 'net', name: 'Email Valid', run: (i) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i) ? "Valid Email" : "Invalid Email" },
+
+    // 9. NUMBER
+    'bin-dec':    { cat: 'number', name: 'Bin to Dec', run: (i) => NumberEngine.convert(i, 2, 10) },
+    'bin-hex':    { cat: 'number', name: 'Bin to Hex', run: (i) => NumberEngine.convert(i, 2, 16) },
+    'bin-oct':    { cat: 'number', name: 'Bin to Oct', run: (i) => NumberEngine.convert(i, 2, 8) },
+    'dec-bin':    { cat: 'number', name: 'Dec to Bin', run: (i) => NumberEngine.convert(i, 10, 2) },
+    'dec-hex':    { cat: 'number', name: 'Dec to Hex', run: (i) => NumberEngine.convert(i, 10, 16) },
+    'dec-oct':    { cat: 'number', name: 'Dec to Oct', run: (i) => NumberEngine.convert(i, 10, 8) },
+    'hex-dec':    { cat: 'number', name: 'Hex to Dec', run: (i) => NumberEngine.convert(i, 16, 10) },
+    'hex-bin':    { cat: 'number', name: 'Hex to Bin', run: (i) => NumberEngine.convert(i, 16, 2) },
+    'oct-dec':    { cat: 'number', name: 'Oct to Dec', run: (i) => NumberEngine.convert(i, 8, 10) },
+    'unit-cf':    { cat: 'number', name: '°C to °F', run: (i) => NumberEngine.unit(i, 'c-f') },
+    'unit-bytes': { cat: 'number', name: 'Data Size', run: (i) => NumberEngine.dataSize(i) },
+
+    // 10. SEO
+    'keyword':    { cat: 'seo', name: 'Keyword Gen', run: (i) => {
+       const words = i.split(',');
+       let res = [];
+       words.forEach(w1 => words.forEach(w2 => { if(w1!==w2) res.push(`${w1.trim()} ${w2.trim()}`)}));
+       return res.join('\n');
+    }},
+
+    // 11. STRING
+    'word-cnt':   { cat: 'string', name: 'Word Count', run: (i) => `Words: ${i.trim().split(/\s+/).length}\nChars: ${i.length}\nLines: ${i.split('\n').length}` },
+    'str-rev':    { cat: 'string', name: 'Reverse', run: (i) => i.split('').reverse().join('') },
+    'str-hex':    { cat: 'string', name: 'Text to Hex', run: (i) => StringEngine.textToHex(i) },
+    'hex-str':    { cat: 'string', name: 'Hex to Text', run: (i) => StringEngine.hexToText(i) },
+    'strip-tags': { cat: 'string', name: 'Strip HTML', run: (i) => StringEngine.stripTags(i) },
+    'esc-html':   { cat: 'string', name: 'Escape HTML', run: (i) => StringEngine.escapeHtml(i) },
+  };
+
+  const categories = [
+    { id: 'data', name: 'Data', icon: Database },
+    { id: 'file', name: 'Files', icon: FileType },
+    { id: 'dev', name: 'Dev Tools', icon: Wrench },
+    { id: 'crypto', name: 'Crypto', icon: Lock },
+    { id: 'format', name: 'Format', icon: Type },
+    { id: 'image', name: 'Images', icon: ImageIcon },
+    { id: 'minify', name: 'Minify', icon: Maximize2 },
+    { id: 'net', name: 'Network', icon: Globe },
+    { id: 'number', name: 'Numbers', icon: Hash },
+    { id: 'string', name: 'Strings', icon: List },
+    { id: 'seo', name: 'SEO', icon: Search },
+  ];
+
+  const activeTool = tools[activeToolId] || tools['json-fmt'];
+
+  const handleRun = async () => {
+    setError('');
+    setOutput('');
+    try {
+      if (activeTool.type === 'file') {
+        if (!imageFile) throw new Error("Please select a file first");
+        const res = await activeTool.run(imageFile);
+        setOutput(res);
+        notify("File Processed");
+      } else {
+        if (!input && activeTool.type !== 'custom') return;
+        const res = await activeTool.run(input);
+        setOutput(res);
+        notify("Done");
+      }
+    } catch (e) {
+      setError(e.message);
+      notify("Error", 'error');
+    }
+  };
+
+  const renderContent = () => {
+    // 1. DIFF
+    if (activeTool.component === 'diff') {
+       return (
+         <div className="h-full flex flex-col gap-2">
+           <div className="flex gap-2 h-1/3">
+              <Editor value={input} onChange={setInput} placeholder="Original Text" />
+              <Editor value={input2} onChange={setInput2} placeholder="New Text" />
+           </div>
+           <div className="flex-1 border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+              <DiffViewer oldText={input} newText={input2} />
+           </div>
+         </div>
+       );
+    }
+
+    // 2. IMAGE RESIZE / FAVICON
+    if (activeTool.component === 'img-resize' || activeTool.component === 'favicon') {
+      return (
+        <div className="h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-8">
+           <input type="file" accept="image/*" onChange={(e) => {
+             const f = e.target.files[0];
+             if(f) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                   const img = new Image();
+                   img.onload = () => {
+                      const size = activeTool.component === 'favicon' ? 32 : (img.width / 2);
+                      const canvas = document.createElement('canvas');
+                      canvas.width = size;
+                      canvas.height = size;
+                      const ctx = canvas.getContext('2d');
+                      ctx.drawImage(img, 0, 0, size, size);
+                      setOutput(canvas.toDataURL());
+                   };
+                   img.src = ev.target.result;
+                }
+                reader.readAsDataURL(f);
+             }
+           }} />
+           <p className="mt-4 text-gray-500">{activeTool.component === 'favicon' ? "Generates 32x32 Favicon" : "Resizes to 50% width"}</p>
+           {output && <img src={output} className="mt-4 border shadow-lg max-h-64" alt="Result" />}
+           {output && <a href={output} download="processed.png" className="mt-2 text-indigo-600 underline">Download</a>}
+        </div>
+      );
+    }
+
+    // 3. COLOR
+    if (activeTool.component === 'color') {
+      return <ColorExplorer color={color} setColor={setColor} />;
+    }
+
+    // 4. SPEED TEST
+    if (activeTool.component === 'speed') {
+       return (
+         <div className="flex flex-col items-center justify-center h-full gap-4">
+            <button onClick={async () => {
+               setOutput("Testing...");
+               const start = Date.now();
+               try {
+                 await fetch('https://unpkg.com/react@18/umd/react.production.min.js?t='+start); 
+                 const duration = Date.now() - start;
+                 setOutput(`Latency: ${duration}ms\n(Estimated via CDN fetch)`);
+               } catch(e) { setOutput("Connection Failed"); }
+            }} className="px-8 py-4 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 font-bold text-lg">Start Speed Test</button>
+            <pre className="text-2xl font-mono">{output}</pre>
+         </div>
+       );
+    }
+
+    // 5. IP
+    if (activeTool.component === 'ip') {
+       return (
+         <div className="flex flex-col items-center justify-center h-full gap-4">
+           <button onClick={() => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>setOutput(d.ip))} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">Check My IP</button>
+           <div className="text-4xl font-mono text-gray-800 dark:text-white">{output}</div>
+         </div>
+       );
+    }
+
+    // 6. ROUTER
+    if (activeTool.component === 'router') {
+      return (
+        <div className="h-full overflow-auto">
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+             <thead className="bg-gray-100 dark:bg-gray-700 uppercase"><tr><th className="px-4 py-3">Brand</th><th>User</th><th>Pass</th></tr></thead>
+             <tbody>
+               {[
+                 ['Linksys','admin','admin'],['Netgear','admin','password'],['D-Link','admin','(blank)'],
+                 ['TP-Link','admin','admin'],['Cisco','cisco','cisco'],['Asus','admin','admin']
+               ].map(([b,u,p], i) => (
+                 <tr key={i} className="border-b dark:border-gray-700"><td className="px-4 py-2 font-bold">{b}</td><td>{u}</td><td>{p}</td></tr>
+               ))}
+             </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // DEFAULT 2-PANE LAYOUT
+    return (
+      <div className="flex flex-col lg:flex-row gap-4 h-[500px] lg:h-[600px]">
+        <div className="flex-1 flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Input</label>
+               {activeTool.type !== 'file' && (
+                 <>
+                   <input 
+                     type="file" 
+                     ref={fileInputRef} 
+                     onChange={handleFileUpload} 
+                     className="hidden" 
+                     accept=".txt,.csv,.json,.xml,.js,.html,.css,.sql,.xlsx,.xls,.md"
+                   />
+                   <button 
+                     onClick={() => fileInputRef.current.click()} 
+                     className="flex items-center gap-1 text-xs px-2 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-md transition-colors"
+                     title="Upload CSV, JSON, Excel, TXT"
+                   >
+                     <Upload size={12} /> Upload File
+                   </button>
+                 </>
+               )}
+            </div>
+            {activeTool.type === 'file' && <span className="text-xs text-indigo-600">File Mode</span>}
+          </div>
+          {activeTool.type === 'file' ? (
+             <div className="flex-1 border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                <input type="file" onChange={(e) => setImageFile(e.target.files[0])} className="p-4" />
+             </div>
+          ) : (
+             <Editor value={input} onChange={setInput} placeholder="Paste content or upload a file (Excel, CSV, JSON, TXT)..." />
+          )}
+        </div>
+
+        <div className="flex lg:flex-col justify-center gap-2 py-2 lg:py-0">
+           <button onClick={handleRun} className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all active:scale-90" title="Execute">
+             <ArrowRightLeft className="lg:rotate-0 rotate-90" />
+           </button>
+           <button onClick={()=>{setInput(''); setOutput(''); setInput2(''); setImageFile(null)}} className="p-3 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all" title="Clear">
+             <Trash2 size={20} />
+           </button>
+        </div>
+
+        <div className="flex-1 flex flex-col">
+           <div className="flex justify-between items-center mb-2">
+             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Result</label>
+             <button onClick={()=>copyToClipboard(output) && notify("Copied!")} className="text-xs text-indigo-600 flex items-center gap-1 hover:underline"><Copy size={12}/> Copy</button>
+           </div>
+           <Editor value={output} readOnly placeholder="Output will appear here..." />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-200 ${isDark ? 'dark' : ''}`}>
+      
+      {/* Notifications */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-top-5 ${
+          notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white'
+        }`}>
+          {notification.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
+          <span className="font-semibold text-sm">{notification.msg}</span>
+        </div>
+      )}
+
+      {/* Navbar */}
+      <nav className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 fixed w-full top-0 z-30 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500"><Menu /></button>
+          <div className="bg-indigo-600 p-1.5 rounded-lg shadow-lg shadow-indigo-500/30">
+            <Zap className="text-white" size={24} fill="currentColor" />
+          </div>
+          <div>
+             <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">Apex Utility Suite</span>
+             <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5">Vibe Coding Tools</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+           <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-100 dark:border-green-900/30">
+              <ShieldCheck size={14} /> <span>Privacy Active</span>
+           </div>
+           <button onClick={() => setIsDark(!isDark)} className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+             {isDark ? <Sun size={20} /> : <Moon size={20} />}
+           </button>
+        </div>
+      </nav>
+
+      <div className="flex pt-16 h-screen overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`fixed lg:static inset-y-0 left-0 z-20 w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} pt-16 lg:pt-0`}>
+          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+             <div className="relative">
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Find a tool..." 
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-gray-100 dark:bg-gray-900 border-none rounded-lg focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value.toLowerCase())}
+                />
+             </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-6 pt-4 custom-scrollbar">
+            {categories.map(cat => {
+               const catTools = Object.entries(tools).filter(([id, t]) => t.cat === cat.id && t.name.toLowerCase().includes(search));
+               if (catTools.length === 0) return null;
+               return (
+                  <div key={cat.id}>
+                    <div className="px-3 mb-2 flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      <cat.icon size={14} /> {cat.name}
+                    </div>
+                    <div className="space-y-0.5">
+                       {catTools.map(([id, tool]) => (
+                         <button
+                           key={id}
+                           onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
+                           className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                             activeToolId === id 
+                               ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
+                               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                           }`}
+                         >
+                           {tool.name}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
+               );
+            })}
+          </div>
+        </aside>
+
+        {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+
+        {/* Main Workspace */}
+        <main className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+           <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+              <div className="max-w-6xl mx-auto h-full flex flex-col">
+                 <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        {activeTool.name}
+                      </h1>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {activeTool.desc || "Client-side processing. Your data never leaves this browser."}
+                      </p>
+                    </div>
+                 </div>
+
+                 {error && (
+                   <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg border border-red-200 dark:border-red-900/50 flex items-center gap-2 text-sm font-medium">
+                     <AlertCircle size={18} /> {error}
+                   </div>
+                 )}
+
+                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden">
+                    <div className="p-4 lg:p-6 flex-1 overflow-hidden">
+                       {renderContent()}
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </main>
+      </div>
+    </div>
+  );
+}
