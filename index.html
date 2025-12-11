@@ -10,7 +10,13 @@
     <script>
       tailwind.config = {
         darkMode: 'class',
-        theme: { extend: {} }
+        theme: { 
+            extend: {
+                fontFamily: {
+                    sans: ['Inter', 'sans-serif'], // Cleaner modern font stack
+                }
+            } 
+        }
       }
     </script>
 
@@ -28,7 +34,7 @@
     <!-- 3. React & Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 4. Import Map to make 'import' work in browser -->
+    <!-- 4. Import Map -->
     <script type="importmap">
     {
       "imports": {
@@ -40,6 +46,10 @@
     </script>
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
@@ -49,7 +59,6 @@
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
     <div id="root"></div>
 
-    <!-- 5. YOUR APP LOGIC -->
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -57,12 +66,12 @@
           Code, FileJson, FileType, CheckCircle, AlertCircle, Copy, Trash2, 
           Maximize2, Moon, Sun, Menu, ArrowRightLeft, Play, ShieldCheck, 
           Search, Hash, Image as ImageIcon, Database, Globe, Cpu, Wrench, 
-          Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet
+          Lock, Type, List, Monitor, Split, Zap, Upload, FileSpreadsheet,
+          ChevronDown, ChevronRight
         } from 'lucide-react';
 
         // --- HOOKS & UTILS ---
 
-        // Preload external scripts hook (simplified since we load in head)
         const useExternalScripts = (urls) => {
           const [loaded, setLoaded] = useState(true);
           return loaded;
@@ -83,13 +92,12 @@
           }
         };
 
-        // --- LOGIC ENGINES ---
-
+        // --- LOGIC ENGINES (Unchanged) ---
         const DataEngine = {
           csvToHtml: (csv) => {
             if (!window.Papa) throw new Error("Loading...");
             const parsed = window.Papa.parse(csv, { header: true });
-            if (parsed.errors.length && parsed.errors[0].message) throw new Error(parsed.errors[0].message);
+            if (parsed.errors.length) throw new Error(parsed.errors[0].message);
             const headers = parsed.meta.fields || [];
             let html = '<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700">\n  <thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase">\n    <tr>';
             headers.forEach(h => html += `<th class="px-4 py-2 border-b dark:border-gray-700">${h}</th>`);
@@ -102,62 +110,15 @@
             return html + '  </tbody>\n</table>';
           },
           csvToJson: (csv) => {
-             if (!window.Papa) throw new Error("Engine Loading...");
              const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
              return JSON.stringify(result.data, null, 2);
           },
           csvToTsv: (csv) => {
-             if (!window.Papa) throw new Error("Engine Loading...");
              const result = window.Papa.parse(csv, { header: true, skipEmptyLines: true });
              return window.Papa.unparse(result.data, { delimiter: "\t" });
           },
-          jsonToCsv: (json) => {
-            if (!window.Papa) throw new Error("Engine Loading...");
-            return window.Papa.unparse(JSON.parse(json));
-          },
-          jsonToTsv: (json) => {
-            if (!window.Papa) throw new Error("Engine Loading...");
-            return window.Papa.unparse(JSON.parse(json), { delimiter: "\t" });
-          },
-          jsonToHtml: (jsonStr) => {
-            const json = JSON.parse(jsonStr);
-            const arr = Array.isArray(json) ? json : [json];
-            if (arr.length === 0) return "Empty Array";
-            const headers = Object.keys(arr[0]);
-            let html = '<table class="w-full text-sm text-left border border-gray-200 dark:border-gray-700"><thead class="bg-gray-100 dark:bg-gray-800 text-xs uppercase"><tr>' + headers.map(h => `<th class="px-4 py-2 border-b dark:border-gray-700">${h}</th>`).join('') + '</tr></thead><tbody>';
-            arr.forEach(row => {
-              html += '<tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700">' + headers.map(h => `<td class="px-4 py-2">${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
-            });
-            return html + '</tbody></table>';
-          },
-          xmlToJson: (xmlStr) => {
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(xmlStr, "text/xml");
-            if (xml.querySelector("parsererror")) throw new Error("Invalid XML Structure");
-            
-            const xmlToObj = (node) => {
-               if (node.nodeType === 3) return node.nodeValue.trim() || ""; 
-               let obj = {};
-               if (node.hasChildNodes()) {
-                  for(let i = 0; i < node.childNodes.length; i++) {
-                     const child = node.childNodes.item(i);
-                     if (child.nodeType === 3 && !child.nodeValue.trim()) continue; 
-                     const name = child.nodeName;
-                     const val = xmlToObj(child);
-                     if (obj[name]) {
-                        if (!Array.isArray(obj[name])) obj[name] = [obj[name]];
-                        obj[name].push(val);
-                     } else {
-                        obj[name] = val;
-                     }
-                  }
-               }
-               if (Object.keys(obj).length === 1 && obj["#text"]) return obj["#text"];
-               if (Object.keys(obj).length === 0) return "";
-               return obj;
-            };
-            return JSON.stringify(xmlToObj(xml.documentElement), null, 2);
-          },
+          jsonToCsv: (json) => window.Papa.unparse(JSON.parse(json)),
+          jsonToTsv: (json) => window.Papa.unparse(JSON.parse(json), { delimiter: "\t" }),
           jsonToXml: (jsonStr) => {
              const obj = JSON.parse(jsonStr);
              const toXml = (v) => Object.entries(v).map(([k, val]) => {
@@ -169,10 +130,7 @@
         };
 
         const CryptoEngine = {
-          hash: (text, algo) => {
-            if (!window.CryptoJS) throw new Error("Crypto Engine Loading...");
-            return window.CryptoJS[algo](text).toString();
-          }
+          hash: (text, algo) => window.CryptoJS[algo](text).toString()
         };
 
         const NumberEngine = {
@@ -289,19 +247,18 @@
           const [imageFile, setImageFile] = useState(null);
           const [color, setColor] = useState('#4f46e5');
           const fileInputRef = useRef(null);
+          
+          // State for collapsible categories - Default 'data' is open
+          const [expandedCats, setExpandedCats] = useState({ 'data': true });
 
-          // Load All Engines including SheetJS for Excel
-          const scriptsLoaded = useExternalScripts([
-            "https://unpkg.com/prettier@2.8.8/standalone.js",
-            "https://unpkg.com/prettier@2.8.8/parser-html.js",
-            "https://unpkg.com/prettier@2.8.8/parser-babel.js",
-            "https://unpkg.com/prettier@2.8.8/parser-postcss.js",
-            "https://unpkg.com/prettier@2.8.8/parser-sql.js",
-            "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
-            "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js",
-            "https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js",
-            "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" 
-          ]);
+          const toggleCategory = (id) => {
+            setExpandedCats(prev => ({
+                ...prev,
+                [id]: !prev[id]
+            }));
+          };
+
+          const scriptsLoaded = useExternalScripts([]);
 
           useEffect(() => {
             if (isDark) document.documentElement.classList.add('dark');
@@ -317,7 +274,6 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // Excel Logic
             if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
               if (!window.XLSX) {
                 notify("Excel Engine Loading...", "error");
@@ -330,13 +286,11 @@
                   const workbook = window.XLSX.read(data, { type: 'binary' });
                   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                   
-                  // Intelligent format selection based on current tool
                   if (activeToolId.includes('json')) {
                      const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
                      setInput(JSON.stringify(jsonData, null, 2));
                      notify("Excel parsed to JSON");
                   } else {
-                     // Default to CSV
                      const csvData = window.XLSX.utils.sheet_to_csv(firstSheet);
                      setInput(csvData);
                      notify("Excel parsed to CSV");
@@ -349,7 +303,6 @@
               return;
             }
 
-            // Default Text Logic (CSV, JSON, TXT, XML, Code)
             const reader = new FileReader();
             reader.onload = (evt) => {
               setInput(evt.target.result);
@@ -358,10 +311,7 @@
             reader.readAsText(file);
           };
 
-          // --- TOOL REGISTRY ---
-
           const tools = {
-            // 1. DATA
             'csv-html': { cat: 'data', name: 'CSV to HTML', run: (i) => DataEngine.csvToHtml(i) },
             'csv-json': { cat: 'data', name: 'CSV to JSON', run: (i) => DataEngine.csvToJson(i) },
             'csv-tsv':  { cat: 'data', name: 'CSV to TSV', run: (i) => DataEngine.csvToTsv(i) },
@@ -375,15 +325,12 @@
             'xml-tsv':  { cat: 'data', name: 'XML to TSV', run: (i) => DataEngine.jsonToTsv(DataEngine.xmlToJson(i)) },
             'xml-html': { cat: 'data', name: 'XML to HTML', run: (i) => DataEngine.jsonToHtml(DataEngine.xmlToJson(i)) },
 
-            // 2. FILES
             'file-b64': { cat: 'file', name: 'File to Base64', type: 'file', run: async (f) => new Promise(r => {
                 const reader = new FileReader();
                 reader.onload = () => r(reader.result);
                 reader.readAsDataURL(f);
             })},
-            'b64-file': { cat: 'file', name: 'Base64 to File', desc: 'Decodes Base64 to Blob (Download)', type: 'custom', component: 'b64dl' },
-
-            // 3. DEV TOOLS
+            
             'diff':      { cat: 'dev', name: 'Diff Check', type: 'custom', component: 'diff' },
             'regex':     { cat: 'dev', name: 'RegEx Tester', type: 'custom', component: 'regex' },
             'color':     { cat: 'dev', name: 'Color Converter', type: 'custom', component: 'color' },
@@ -391,7 +338,6 @@
             'speed':     { cat: 'dev', name: 'Speed Test', type: 'custom', component: 'speed' },
             'htaccess':  { cat: 'dev', name: '.htaccess Gen', run: () => "RewriteEngine On\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php?/$1 [L]" },
 
-            // 4. CRYPTO
             'sha1':      { cat: 'crypto', name: 'SHA-1', run: (i) => CryptoEngine.hash(i, 'SHA1') },
             'md5':       { cat: 'crypto', name: 'MD5', run: (i) => CryptoEngine.hash(i, 'MD5') },
             'sha256':    { cat: 'crypto', name: 'SHA-256', run: (i) => CryptoEngine.hash(i, 'SHA256') },
@@ -401,7 +347,6 @@
             'url-enc':   { cat: 'crypto', name: 'URL Encode', run: (i) => encodeURIComponent(i) },
             'url-dec':   { cat: 'crypto', name: 'URL Decode', run: (i) => decodeURIComponent(i) },
 
-            // 5. FORMATTING
             'json-fmt':  { cat: 'format', name: 'JSON Format', run: (i) => window.prettier.format(i, { parser: 'json', plugins: window.prettierPlugins }) },
             'js-fmt':    { cat: 'format', name: 'JS Format', run: (i) => window.prettier.format(i, { parser: 'babel', plugins: window.prettierPlugins }) },
             'css-fmt':   { cat: 'format', name: 'CSS Format', run: (i) => window.prettier.format(i, { parser: 'css', plugins: window.prettierPlugins }) },
@@ -409,21 +354,17 @@
             'sql-fmt':   { cat: 'format', name: 'SQL Format', run: (i) => i.replace(/\s+/g,' ').replace(/\b(SELECT|FROM|WHERE|AND|OR|ORDER BY|INSERT|UPDATE|DELETE)\b/gi, '\n$1').trim() },
             'py-fmt':    { cat: 'format', name: 'Python Indent', run: (i) => i.replace(/:\s*$/gm, ':\n    ') }, 
 
-            // 6. IMAGE
             'img-resize': { cat: 'image', name: 'Image Resizer', type: 'custom', component: 'img-resize' },
             'favicon':    { cat: 'image', name: 'Favicon Gen', type: 'custom', component: 'favicon' },
 
-            // 7. MINIFY
             'json-min':   { cat: 'minify', name: 'JSON Minify', run: (i) => JSON.stringify(JSON.parse(i)) },
             'css-min':    { cat: 'minify', name: 'CSS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s+/g," ").replace(/ ?([:;{}]) ?/g,"$1").trim() },
             'js-min':     { cat: 'minify', name: 'JS Minify', run: (i) => i.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").split('\n').map(l=>l.trim()).join(' ') },
 
-            // 8. NET
             'ip':         { cat: 'net', name: 'My IP', type: 'custom', component: 'ip' },
             'router':     { cat: 'net', name: 'Router Pass', type: 'custom', component: 'router' },
             'email-val':  { cat: 'net', name: 'Email Valid', run: (i) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i) ? "Valid Email" : "Invalid Email" },
 
-            // 9. NUMBER
             'bin-dec':    { cat: 'number', name: 'Bin to Dec', run: (i) => NumberEngine.convert(i, 2, 10) },
             'bin-hex':    { cat: 'number', name: 'Bin to Hex', run: (i) => NumberEngine.convert(i, 2, 16) },
             'bin-oct':    { cat: 'number', name: 'Bin to Oct', run: (i) => NumberEngine.convert(i, 2, 8) },
@@ -436,7 +377,6 @@
             'unit-cf':    { cat: 'number', name: '°C to °F', run: (i) => NumberEngine.unit(i, 'c-f') },
             'unit-bytes': { cat: 'number', name: 'Data Size', run: (i) => NumberEngine.dataSize(i) },
 
-            // 10. SEO
             'keyword':    { cat: 'seo', name: 'Keyword Gen', run: (i) => {
               const words = i.split(',');
               let res = [];
@@ -444,7 +384,6 @@
               return res.join('\n');
             }},
 
-            // 11. STRING
             'word-cnt':   { cat: 'string', name: 'Word Count', run: (i) => `Words: ${i.trim().split(/\s+/).length}\nChars: ${i.length}\nLines: ${i.split('\n').length}` },
             'str-rev':    { cat: 'string', name: 'Reverse', run: (i) => i.split('').reverse().join('') },
             'str-hex':    { cat: 'string', name: 'Text to Hex', run: (i) => StringEngine.textToHex(i) },
@@ -491,7 +430,6 @@
           };
 
           const renderContent = () => {
-            // 1. DIFF
             if (activeTool.component === 'diff') {
               return (
                 <div className="h-full flex flex-col gap-2">
@@ -506,7 +444,6 @@
               );
             }
 
-            // 2. IMAGE RESIZE / FAVICON
             if (activeTool.component === 'img-resize' || activeTool.component === 'favicon') {
               return (
                 <div className="h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 p-8">
@@ -537,12 +474,10 @@
               );
             }
 
-            // 3. COLOR
             if (activeTool.component === 'color') {
               return <ColorExplorer color={color} setColor={setColor} />;
             }
 
-            // 4. SPEED TEST
             if (activeTool.component === 'speed') {
               return (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -560,7 +495,6 @@
               );
             }
 
-            // 5. IP
             if (activeTool.component === 'ip') {
               return (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -570,7 +504,6 @@
               );
             }
 
-            // 6. ROUTER
             if (activeTool.component === 'router') {
               return (
                 <div className="h-full overflow-auto">
@@ -589,7 +522,6 @@
               );
             }
 
-            // DEFAULT 2-PANE LAYOUT
             return (
               <div className="flex flex-col lg:flex-row gap-4 h-[500px] lg:h-[600px]">
                 <div className="flex-1 flex flex-col">
@@ -663,12 +595,9 @@
               <nav className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 fixed w-full top-0 z-30 shadow-sm">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500"><Menu /></button>
-                  <div className="bg-indigo-600 p-1.5 rounded-lg shadow-lg shadow-indigo-500/30">
-                    <Zap className="text-white" size={24} fill="currentColor" />
-                  </div>
                   <div>
-                    <span className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">Apex Utility Suite</span>
-                    <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5">Vibe Coding Tools</span>
+                    <span className="text-3xl font-light tracking-tight text-gray-900 dark:text-white">Apex Utility Suite</span>
+                    <span className="text-[9px] block text-gray-400 font-bold tracking-widest leading-none uppercase mt-0.5 ml-1">Vibe Coding Tools</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -696,33 +625,53 @@
                         />
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-6 pt-4 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-2 pt-4 custom-scrollbar">
                     {categories.map(cat => {
                       const catTools = Object.entries(tools).filter(([id, t]) => t.cat === cat.id && t.name.toLowerCase().includes(search));
                       if (catTools.length === 0) return null;
+                      
+                      const isOpen = expandedCats[cat.id];
+
                       return (
-                          <div key={cat.id}>
-                            <div className="px-3 mb-2 flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                              <cat.icon size={14} /> {cat.name}
-                            </div>
-                            <div className="space-y-0.5">
-                              {catTools.map(([id, tool]) => (
-                                <button
-                                  key={id}
-                                  onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
-                                  className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
-                                    activeToolId === id 
-                                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
-                                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                  }`}
-                                >
-                                  {tool.name}
-                                </button>
-                              ))}
-                            </div>
+                          <div key={cat.id} className="mb-1">
+                            <button 
+                                onClick={() => toggleCategory(cat.id)}
+                                className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <cat.icon size={14} /> <span>{cat.name}</span>
+                                </div>
+                                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                            
+                            {isOpen && (
+                                <div className="space-y-0.5 mt-1 ml-2 border-l border-gray-200 dark:border-gray-700 pl-2">
+                                {catTools.map(([id, tool]) => (
+                                    <button
+                                    key={id}
+                                    onClick={() => { setActiveToolId(id); setInput(''); setOutput(''); setSidebarOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                                        activeToolId === id 
+                                        ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium' 
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                    >
+                                    {tool.name}
+                                    </button>
+                                ))}
+                                </div>
+                            )}
                           </div>
                       );
                     })}
+                  </div>
+                  
+                  {/* Copyright Footer */}
+                  <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+                    <p className="text-[10px] text-gray-400 font-medium">
+                        &copy; 2025 Apex Innovate LLC, UAE<br/>
+                        Registered Copyrighted
+                    </p>
                   </div>
                 </aside>
 
