@@ -2,6 +2,8 @@ Apex Utility Suite
 
 Vibe Coding Tools
 
+>> https://joenasriani.github.io/apex-utility-suite/
+
 Apex Utility Suite is a precision-engineered, client-side toolkit designed for developers, data analysts, and power users. It consolidates over 50 essential utilities into a single, distraction-free interface.
 
 Unlike web-based tools that send your data to a server, Apex Utility Suite processes everything locally in your browser, ensuring maximum privacy and security for sensitive data, tokens, and configuration files.
