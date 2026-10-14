@@ -57,14 +57,4 @@ Some utilities are intentionally lightweight. Email validation checks syntax, no
 
 Features above are identified from the source code. No browser end-to-end tests, security audit, external privacy audit, or production reliability verification was performed for this README update.
 
-## License and ownership notice
-
-The existing repository README states:
-
-> Copyright © 2025 Apex Innovate LLC. All Rights Reserved.
-
-> This software is proprietary and confidential. Unauthorized copying, transfer, or reproduction of this file, via any medium, is strictly prohibited.
-
-This notice is retained from the previous documentation; it is not an independent legal verification of ownership or licensing terms.
-
 Credit: Joe Nasr
