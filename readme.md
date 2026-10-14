@@ -1,118 +1,70 @@
-Apex Utility Suite
+# Apex Utility Suite
 
-Vibe Coding Tools
+A browser-based collection of developer and everyday utilities, implemented in a single `index.html` file. React renders the interface; JavaScript handles data conversion, formatting, hashing, image tools, text processing, and other operations in the browser.
 
->> https://joenasriani.github.io/apex-utility-suite/
+**Live page:** https://joenasriani.github.io/apex-utility-suite/
 
-Apex Utility Suite is a precision-engineered, client-side toolkit designed for developers, data analysts, and power users. It consolidates over 50 essential utilities into a single, distraction-free interface.
+## Implemented tools
 
-Unlike web-based tools that send your data to a server, Apex Utility Suite processes everything locally in your browser, ensuring maximum privacy and security for sensitive data, tokens, and configuration files.
+The source defines more than 50 tool entries across these groups:
 
-🚀 Key Features
+- **Data conversion:** CSV, JSON, XML, TSV, and HTML table conversions. Excel (`.xls` and `.xlsx`) file import uses SheetJS to read the first worksheet and place CSV or JSON into the input editor.
+- **Files:** Convert a selected file to a Base64 data URL or decode Base64 content for file download.
+- **Developer tools:** Line-based text diff, regular expression tester, color explorer, timestamp utility, network speed test, and an .htaccess snippet generator.
+- **Hashing and encoding:** SHA-1, SHA-256, SHA-512, MD5, Base64, and URL encoding/decoding. These tools do not constitute encryption or a complete security assessment.
+- **Code formatting:** JSON, JavaScript, CSS, and HTML formatting with Prettier; simplified SQL formatting and Python indentation helpers.
+- **Minification:** Basic JSON, JavaScript, and CSS minification. The JavaScript and CSS implementations use string replacements rather than full production minifier parsers.
+- **Images:** Browser-based image resizing and favicon generation.
+- **Network and validation:** Public IP lookup, a router-password reference tool, and email syntax validation.
+- **Numbers and text:** Number-base conversion, basic unit/data-size conversions, keyword tools, word count, text reversal, text/hex conversion, HTML tag removal, and HTML escaping.
 
-50+ Professional Tools: From data conversion and cryptography to code formatting and image optimization.
+The interface includes tool search, category navigation, file upload, copy actions, and a light/dark theme toggle.
 
-Universal File Upload: Smart parsing for Excel (.xlsx), CSV, JSON, XML, and plain text files.
+## Architecture and dependencies
 
-Client-Side Privacy: No server-side processing. Your data never leaves your device.
+There is no `package.json`, bundler configuration, or npm build script in this repository. The application is an HTML page with embedded React/JSX transformed in the browser by Babel.
 
-Precision Engines: Powered by industry-standard libraries including Prettier, CryptoJS, SheetJS, and PapaParse.
+The page loads its dependencies from third-party CDNs, including React 18, React DOM, Babel Standalone, Tailwind CSS, Lucide React, Prettier, CryptoJS, PapaParse, jsdiff, and SheetJS.
 
-Vibe Coding UI: A modern, responsive interface with Dark/Light mode support.
+An internet connection is needed to load those external libraries when they are not already cached. Availability and behavior depend on the referenced CDN resources.
 
-🛠️ Tool Categories
+## Use
 
-📊 Data Conversion
+Open the [hosted page](https://joenasriani.github.io/apex-utility-suite/) or clone the repository:
 
-Transform structure data instantly. Supports Excel uploads.
-
-CSV ↔ JSON ↔ HTML ↔ XML ↔ TSV
-
-Excel (.xlsx) parsing and conversion
-
-🔒 Cryptography & Security
-
-Secure hashing and encoding.
-
-Hash Generators: SHA-1, SHA-256, SHA-512, MD5
-
-Encoding: Base64, URL Encode/Decode
-
-💻 Developer Utilities
-
-Essential tools for daily coding tasks.
-
-Diff Tool: Compare text or code snippets with highlighted changes.
-
-RegEx Tester: Real-time pattern matching.
-
-Speed Test: Estimate network latency via CDN fetch.
-
-Playground: HTML/CSS/JS sandbox.
-
-🎨 Formatting & Minification
-
-Clean up or compress code.
-
-Formatters: JSON, JavaScript, CSS, HTML, SQL, Python (Indent).
-
-Minifiers: Remove whitespace and comments for production.
-
-Engine: Uses Prettier standalone for reliable formatting.
-
-🖼️ Image Tools
-
-Resizer: Scale images locally.
-
-Favicon Generator: Create standard 32x32 favicons.
-
-Base64: Convert images to Base64 strings.
-
-🌐 Network & System
-
-Public IP Lookup.
-
-Default Router Password Database.
-
-Email Validation (Syntax).
-
-📦 Installation & Usage
-
-This project is built with React.
-
-Clone the repository
-
-git clone [https://github.com/your-username/apex-utility-suite.git](https://github.com/your-username/apex-utility-suite.git)
+```bash
+git clone https://github.com/Joenasriani/apex-utility-suite.git
 cd apex-utility-suite
+```
 
+For local use, serve the directory with a static web server, for example:
 
-Install dependencies
+```bash
+python3 -m http.server 8000
+```
 
-npm install
+Then open `http://localhost:8000` in a browser. The HTML loads its external dependencies over the network.
 
+There is no `npm install`, `npm run dev`, or `npm run build` step for the current repository.
 
-Start the development server
+## Data handling and limitations
 
-npm run dev
+Most formatting, conversion, hashing, and file operations are implemented in browser JavaScript. Uploaded text and spreadsheet files are read with browser file APIs. The inspected application source does not contain an upload endpoint for those files.
 
+**This is not an offline or network-free application.** The page requests scripts and modules from external CDNs. Its public IP utility also calls `api.ipify.org`, which receives a network request when that feature is used. Do not interpret local processing as a guarantee that all activity or data remains on the device.
 
-Build for production
+Some utilities are intentionally lightweight. Email validation checks syntax, not deliverability; simple formatting and minification are not substitutes for dedicated language parsers or build tools; and output from conversions should be checked before production use.
 
-npm run build
+Features above are identified from the source code. No browser end-to-end tests, security audit, external privacy audit, or production reliability verification was performed for this README update.
 
+## License and ownership notice
 
-🛡️ Privacy Policy
+The existing repository README states:
 
-Apex Utility Suite is designed with a "Privacy First" architecture.
+> Copyright © 2025 Apex Innovate LLC. All Rights Reserved.
 
-No Analytics: We do not track your input.
+> This software is proprietary and confidential. Unauthorized copying, transfer, or reproduction of this file, via any medium, is strictly prohibited.
 
-Local Execution: Hashing, formatting, and conversion logic runs entirely within your browser's JavaScript engine.
+This notice is retained from the previous documentation; it is not an independent legal verification of ownership or licensing terms.
 
-File Handling: Files uploaded (Excel, Images, Text) are read via the HTML5 FileReader API and are not uploaded to any remote server.
-
-📄 License
-
-Copyright © 2025 Apex Innovate LLC. All Rights Reserved.
-
-This software is proprietary and confidential. Unauthorized copying, transfer, or reproduction of this file, via any medium, is strictly prohibited.
+Credit: Joe Nasr
